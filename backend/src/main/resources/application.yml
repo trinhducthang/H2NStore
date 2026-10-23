@@ -1,0 +1,122 @@
+spring:
+  application:
+    name: flower-shop
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/flowershop}
+    username: ${DB_USER:flowershop}
+    password: ${DB_PASSWORD:flowershop}
+    hikari:
+      maximum-pool-size: 10
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate      # schema do Flyway quản lý
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
+        default_batch_fetch_size: 50
+  flyway:
+    enabled: true
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 30MB
+  jackson:
+    time-zone: Asia/Ho_Chi_Minh
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+  cache:
+    type: ${CACHE_TYPE:simple}   # simple | redis | none
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
+server:
+  port: ${PORT:8080}
+  forward-headers-strategy: native
+  error:
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  health:
+    redis:
+      enabled: ${REDIS_ENABLED:false}
+    mail:
+      enabled: false
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  jwt:
+    secret: ${JWT_SECRET:dev-secret-change-me-dev-secret-change-me-0123456789}
+    access-ttl: 15m
+    refresh-ttl: 7d
+    cookie-secure: ${COOKIE_SECURE:true}
+  cors:
+    allowed-origins: ${FRONTEND_URL:http://localhost:5173}
+  rate-limit:
+    requests-per-minute: 10
+  auth:
+    max-failed-attempts: 5
+    lock-duration: 15m
+    reset-token-ttl: 30m
+  order:
+    max-per-slot: 10
+    min-prepare-hours: 2
+    max-days-ahead: 30
+    express-start-hour: 8
+    express-end-hour: 17
+    # Giới hạn riêng cho ngày lễ, key dạng MM-dd
+    holiday-max-per-slot:
+      "[02-14]": 25
+      "[03-08]": 25
+      "[10-20]": 25
+      "[11-20]": 20
+  storage:
+    type: local                 # local | cloudinary (chưa cài)
+    local-dir: ${STORAGE_DIR:./uploads}
+    public-url: ${STORAGE_PUBLIC_URL:/uploads}
+  mail:
+    from: ${MAIL_FROM:no-reply@flowershop.local}
+  telegram:
+    bot-token: ${TG_TOKEN:}
+    chat-id: ${TG_CHAT_ID:}
+  sepay:
+    # API Key cấu hình ở my.sepay.vn > Webhooks (kiểu chứng thực "API Key").
+    # SePay gửi header: Authorization: Apikey <api-key>
+    webhook-api-key: ${SEPAY_WEBHOOK_API_KEY:}
+    # Mã ngân hàng theo danh sách của qr.sepay.vn (VD: MBBank, Vietcombank, ACB, TPBank...)
+    bank-code: ${SEPAY_BANK_CODE:MBBank}
+    account-number: ${SEPAY_ACCOUNT_NUMBER:0000000000}
+    account-name: ${SEPAY_ACCOUNT_NAME:SHOP HOA}
+    # Tiền tố nội dung CK (để trống nếu không cần; một số ngân hàng dùng VA của SePay yêu cầu "SEVQR")
+    content-prefix: ${SEPAY_CONTENT_PREFIX:}
+    qr-template: compact
+    # Đơn SePay chưa thanh toán sau khoảng này sẽ tự hủy để trả hàng và khung giờ
+    payment-ttl: ${SEPAY_PAYMENT_TTL:30m}
+    expire-check-interval: PT60S
+
+logging:
+  pattern:
+    level: "%5p [%X{traceId:-}]"

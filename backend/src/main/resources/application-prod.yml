@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  flyway:
+    locations: classpath:db/migration
+
+springdoc:
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    # Luôn true khi chạy HTTPS. Chỉ đặt COOKIE_SECURE=false khi thử nghiệm qua HTTP thuần (không phải localhost)
+    cookie-secure: ${COOKIE_SECURE:true}
+  sepay:
+    webhook-api-key: ${SEPAY_WEBHOOK_API_KEY}
+    account-number: ${SEPAY_ACCOUNT_NUMBER}
+    account-name: ${SEPAY_ACCOUNT_NAME}
+
+logging:
+  level:
+    root: INFO

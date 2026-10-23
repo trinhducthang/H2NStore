@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="72%">
+      <stop offset="0" stop-color="#F8F5FF"/>
+      <stop offset="1" stop-color="#D9CDF5"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="800" fill="url(#bg)"/>
+  <circle cx="400" cy="385" r="275" fill="#fff" fill-opacity=".45"/>
+  <ellipse cx="400" cy="610" rx="170" ry="22" fill="#5a3a46" fill-opacity=".1"/>
+  <text x="400" y="395" text-anchor="middle" dominant-baseline="central" font-size="400"
+    font-family="'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif">🖍️</text>
+</svg>

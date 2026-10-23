@@ -1,0 +1,17 @@
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/dev
+    out-of-order: true
+
+app:
+  jwt:
+    cookie-secure: ${COOKIE_SECURE:false}
+  cors:
+    allowed-origins: ${FRONTEND_URL:http://localhost:5173}
+  sepay:
+    # Key mặc định cho dev để test webhook bằng curl
+    webhook-api-key: ${SEPAY_WEBHOOK_API_KEY:dev-sepay-key}
+
+logging:
+  level:
+    com.flowershop: DEBUG

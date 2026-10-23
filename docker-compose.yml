@@ -1,0 +1,94 @@
+# Triển khai VPS 1 vCPU / 2GB: postgres + app (Spring Boot) + web (nginx phục vụ frontend, proxy /api).
+# Chạy: cp .env.example .env  (sửa giá trị)  ->  docker compose up -d --build
+# Bật Redis cache: docker compose --profile redis up -d  và đặt CACHE_TYPE=redis, REDIS_ENABLED=true trong .env
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-flowershop}
+      POSTGRES_USER: ${DB_USER:-flowershop}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-flowershop}
+      TZ: Asia/Ho_Chi_Minh
+    command: ["postgres", "-c", "shared_buffers=256MB", "-c", "max_connections=30"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      # Chỉ mở cho máy local (để chạy backend ngoài Docker khi dev / pg_dump)
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-flowershop} -d ${DB_NAME:-flowershop}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["redis"]
+    restart: unless-stopped
+    command: ["redis-server", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru", "--save", ""]
+
+  app:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-flowershop}
+      DB_USER: ${DB_USER:-flowershop}
+      DB_PASSWORD: ${DB_PASSWORD:-flowershop}
+      JWT_SECRET: ${JWT_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      STORAGE_DIR: /app/uploads
+      STORAGE_PUBLIC_URL: /uploads
+      CACHE_TYPE: ${CACHE_TYPE:-simple}
+      REDIS_ENABLED: ${REDIS_ENABLED:-false}
+      REDIS_HOST: redis
+      SEPAY_WEBHOOK_API_KEY: ${SEPAY_WEBHOOK_API_KEY}
+      SEPAY_BANK_CODE: ${SEPAY_BANK_CODE}
+      SEPAY_ACCOUNT_NUMBER: ${SEPAY_ACCOUNT_NUMBER}
+      SEPAY_ACCOUNT_NAME: ${SEPAY_ACCOUNT_NAME}
+      SEPAY_CONTENT_PREFIX: ${SEPAY_CONTENT_PREFIX:-}
+      SEPAY_PAYMENT_TTL: ${SEPAY_PAYMENT_TTL:-30m}
+      TG_TOKEN: ${TG_TOKEN:-}
+      TG_CHAT_ID: ${TG_CHAT_ID:-}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-no-reply@flowershop.local}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
+    volumes:
+      - uploads:/app/uploads
+    expose:
+      - "8080"
+
+  web:
+    build:
+      context: ./frontend
+      # Thông tin hiển thị trên web (để trống = mặc định, "-" = ẩn). Đổi xong phải build lại web.
+      args:
+        VITE_SHOP_NAME: ${SHOP_NAME:-}
+        VITE_SHOP_TAGLINE: ${SHOP_TAGLINE:-}
+        VITE_SHOP_HOTLINE: ${SHOP_HOTLINE:-}
+        VITE_SHOP_ADDRESS: ${SHOP_ADDRESS:-}
+        VITE_FACEBOOK_URL: ${SHOP_FACEBOOK_URL:-}
+        VITE_TWITTER_URL: ${SHOP_TWITTER_URL:-}
+        VITE_INSTAGRAM_URL: ${SHOP_INSTAGRAM_URL:-}
+        VITE_ZALO: ${SHOP_ZALO:-}
+        VITE_MESSENGER: ${SHOP_MESSENGER:-}
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+    volumes:
+      - uploads:/var/www/uploads:ro
+
+volumes:
+  pgdata:
+  uploads:
