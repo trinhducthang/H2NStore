@@ -17,7 +17,8 @@ public record AppProperties(
         Storage storage,
         Mail mail,
         Telegram telegram,
-        Sepay sepay) {
+        Sepay sepay,
+        Review review) {
 
     public record Jwt(String secret, Duration accessTtl, Duration refreshTtl, boolean cookieSecure) {
     }
@@ -37,6 +38,10 @@ public record AppProperties(
     }
 
     public record Storage(String type, String localDir, String publicUrl) {
+    }
+
+    /** windowDays: số ngày sau khi giao được đánh giá, và sau khi đánh giá được sửa (1 lần) */
+    public record Review(int windowDays) {
     }
 
     public record Mail(String from) {

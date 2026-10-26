@@ -22,6 +22,9 @@ public final class BannerDtos {
             @Size(max = 500)
             @Pattern(regexp = LINK_REGEX, message = "Liên kết phải bắt đầu bằng / hoặc http(s)://")
             String linkUrl,
+            /** Vị trí ảnh trong khung (object-position %), để trống = giữa ảnh */
+            @Min(0) @Max(100) Integer imagePositionX,
+            @Min(0) @Max(100) Integer imagePositionY,
             @Min(0) @Max(9999) Integer sortOrder,
             Boolean active,
             OffsetDateTime startsAt,
@@ -33,12 +36,13 @@ public final class BannerDtos {
      * SCHEDULED (chưa đến giờ), EXPIRED (đã hết hạn).
      */
     public record BannerResponse(Long id, String title, String subtitle, String buttonText, String linkUrl,
-                                 String imageUrl, int sortOrder, boolean active, OffsetDateTime startsAt,
-                                 OffsetDateTime endsAt, String displayStatus, OffsetDateTime updatedAt) {
+                                 String imageUrl, int imagePositionX, int imagePositionY, int sortOrder,
+                                 boolean active, OffsetDateTime startsAt, OffsetDateTime endsAt,
+                                 String displayStatus, OffsetDateTime updatedAt) {
     }
 
     /** Dữ liệu banner cho trang chủ (chỉ banner đang hiển thị). */
     public record PublicBanner(Long id, String title, String subtitle, String buttonText, String linkUrl,
-                               String imageUrl) {
+                               String imageUrl, int imagePositionX, int imagePositionY) {
     }
 }

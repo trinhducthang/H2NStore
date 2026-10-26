@@ -160,6 +160,11 @@ public final class OrderDtos {
     }
 
     /** Dùng cho trang thanh toán: frontend gọi lặp lại để biết khi nào SePay báo đã nhận tiền. */
+    /** 1 sản phẩm trong đơn đã giao của khách (gộp các phân loại), dùng cho đánh giá. */
+    public record DeliveredItem(Long orderId, String orderCode, Long productId, String productName,
+                                String variantName, OffsetDateTime deliveredAt) {
+    }
+
     public record PaymentStatusResponse(String code, OrderStatus status, PaymentMethod paymentMethod,
                                         PaymentStatus paymentStatus, long total, long paidAmount,
                                         OffsetDateTime paidAt, BankTransferInfo bankTransferInfo) {

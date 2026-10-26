@@ -7,6 +7,7 @@ import type {
   ProductDetail,
   ProductSummary,
   PublicBanner,
+  RatingBreakdown,
   Review,
   SlotAvailability,
   ValidateCouponResponse,
@@ -38,10 +39,14 @@ export const catalogApi = {
 
   related: (slug: string) => request<ProductSummary[]>(`/api/public/products/${encodeURIComponent(slug)}/related`),
 
-  reviews: (slug: string, page = 0, size = 5) =>
+  /** rating: lọc theo số sao; withMedia: chỉ đánh giá có ảnh/video */
+  reviews: (slug: string, query: { rating?: number | null; withMedia?: boolean; page?: number; size?: number }) =>
     request<PageResponse<Review>>(`/api/public/products/${encodeURIComponent(slug)}/reviews`, {
-      query: { page, size },
+      query: { ...query, withMedia: query.withMedia || undefined },
     }),
+
+  reviewSummary: (slug: string) =>
+    request<RatingBreakdown>(`/api/public/products/${encodeURIComponent(slug)}/reviews/summary`),
 
   zones: () => request<DeliveryZone[]>('/api/public/delivery/zones'),
 

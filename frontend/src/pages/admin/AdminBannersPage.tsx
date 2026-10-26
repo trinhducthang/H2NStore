@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type PointerEvent } from 'react';
 import { adminApi } from '../../api/admin';
 import { ApiError, errorMessage } from '../../api/client';
 import type { Banner, BannerDisplayStatus, BannerRequest } from '../../api/types';
@@ -30,12 +30,108 @@ const STATUS_TONE: Record<BannerDisplayStatus, Tone> = {
   NO_IMAGE: 'warning',
 };
 
+/** Phần ảnh hiển thị khi khung cắt bớt ảnh (object-position %) */
+interface ImagePosition {
+  x: number;
+  y: number;
+}
+
+const CENTER: ImagePosition = { x: 50, y: 50 };
+/** Phím mũi tên đẩy ảnh như khi kéo: mũi tên xuống = ảnh đi xuống = thấy phần trên của ảnh */
+const NUDGE: Record<string, [number, number]> = {
+  ArrowLeft: [5, 0],
+  ArrowRight: [-5, 0],
+  ArrowUp: [0, 5],
+  ArrowDown: [0, -5],
+};
+
+const clampPercent = (v: number) => Math.min(100, Math.max(0, Math.round(v)));
+
+/**
+ * Ảnh banner kéo được để chọn phần hiển thị khi khung cắt bớt ảnh (object-fit: cover + object-position).
+ * Dùng cho cả khung máy tính (3:1) và điện thoại (2:1), hai khung chung một vị trí.
+ */
+function BannerPositioner({
+  src,
+  position,
+  onChange,
+  className,
+  label,
+}: {
+  src: string;
+  position: ImagePosition;
+  onChange: (p: ImagePosition) => void;
+  className: string;
+  label: string;
+}) {
+  const drag = useRef<{ startX: number; startY: number; from: ImagePosition; spanX: number; spanY: number } | null>(
+    null,
+  );
+  const [dragging, setDragging] = useState(false);
+
+  const startDrag = (e: PointerEvent<HTMLDivElement>) => {
+    const box = e.currentTarget;
+    const img = box.querySelector('img');
+    if (!e.isPrimary || !img?.naturalWidth) return;
+    // Phần ảnh thừa ra ngoài khung (px) theo từng chiều; bằng 0 thì chiều đó không có gì để kéo
+    const scale = Math.max(box.clientWidth / img.naturalWidth, box.clientHeight / img.naturalHeight);
+    drag.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      from: position,
+      spanX: img.naturalWidth * scale - box.clientWidth,
+      spanY: img.naturalHeight * scale - box.clientHeight,
+    };
+    box.setPointerCapture(e.pointerId);
+    setDragging(true);
+  };
+
+  const moveDrag = (e: PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d) return;
+    onChange({
+      x: d.spanX >= 1 ? clampPercent(d.from.x - ((e.clientX - d.startX) / d.spanX) * 100) : d.from.x,
+      y: d.spanY >= 1 ? clampPercent(d.from.y - ((e.clientY - d.startY) / d.spanY) * 100) : d.from.y,
+    });
+  };
+
+  const endDrag = () => {
+    drag.current = null;
+    setDragging(false);
+  };
+
+  const nudge = (e: KeyboardEvent<HTMLDivElement>) => {
+    const step = NUDGE[e.key];
+    if (!step) return;
+    e.preventDefault();
+    onChange({ x: clampPercent(position.x + step[0]), y: clampPercent(position.y + step[1]) });
+  };
+
+  return (
+    <div
+      className={`${className} banner-positioner ${dragging ? 'is-dragging' : ''}`}
+      role="group"
+      tabIndex={0}
+      aria-label={`${label}: ngang ${position.x}%, dọc ${position.y}%. Kéo ảnh hoặc dùng phím mũi tên để chỉnh`}
+      onPointerDown={startDrag}
+      onPointerMove={moveDrag}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      onKeyDown={nudge}
+    >
+      <img src={src} alt="" draggable={false} style={{ objectPosition: `${position.x}% ${position.y}%` }} />
+    </div>
+  );
+}
+
 function toRequest(b: Banner, patch: Partial<BannerRequest> = {}): BannerRequest {
   return {
     title: b.title ?? null,
     subtitle: b.subtitle ?? null,
     buttonText: b.buttonText ?? null,
     linkUrl: b.linkUrl ?? null,
+    imagePositionX: b.imagePositionX,
+    imagePositionY: b.imagePositionY,
     sortOrder: b.sortOrder,
     active: b.active,
     startsAt: b.startsAt ?? null,
@@ -68,6 +164,9 @@ function BannerForm({
   });
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(initial?.imageUrl ?? null);
+  const [position, setPosition] = useState<ImagePosition>(
+    initial ? { x: initial.imagePositionX, y: initial.imagePositionY } : CENTER,
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
@@ -93,6 +192,7 @@ function BannerForm({
       return next;
     });
     setFile(picked);
+    setPosition(CENTER);
   };
 
   const submit = async (e: FormEvent) => {
@@ -113,6 +213,8 @@ function BannerForm({
       subtitle: form.subtitle.trim() || null,
       buttonText: form.buttonText.trim() || null,
       linkUrl: link || null,
+      imagePositionX: position.x,
+      imagePositionY: position.y,
       sortOrder,
       active: form.active,
       startsAt: fromDateTimeLocalVN(form.startsAt),
@@ -137,14 +239,43 @@ function BannerForm({
       <form className="form" onSubmit={submit} noValidate>
         <div className="field">
           <span className="field-label">Ảnh banner</span>
-          <div className="banner-preview">
-            {preview ? <img src={preview} alt="Xem trước banner" /> : <span className="muted small">Chưa có ảnh</span>}
-          </div>
+          {preview ? (
+            <>
+              <BannerPositioner
+                src={preview}
+                position={position}
+                onChange={setPosition}
+                className="banner-preview"
+                label="Vị trí ảnh trên máy tính"
+              />
+              <div className="banner-position-bar">
+                <BannerPositioner
+                  src={preview}
+                  position={position}
+                  onChange={setPosition}
+                  className="banner-preview-mobile"
+                  label="Vị trí ảnh trên điện thoại"
+                />
+                <div className="banner-position-help">
+                  <p className="muted small">
+                    Kéo ảnh để chọn phần hiển thị (hoặc bấm vào ảnh rồi dùng phím mũi tên). Khung nhỏ là banner trên
+                    điện thoại (tỉ lệ 2:1), hai bên ảnh bị cắt nhiều hơn.
+                  </p>
+                  {(position.x !== CENTER.x || position.y !== CENTER.y) && (
+                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => setPosition(CENTER)}>
+                      Căn giữa
+                    </button>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="banner-preview">
+              <span className="muted small">Chưa có ảnh</span>
+            </div>
+          )}
           <input type="file" accept={ACCEPTED_TYPES.join(',')} onChange={(e) => pickFile(e.target.files?.[0])} />
-          <p className="muted small">
-            Khuyến nghị 1920×640 px (tỉ lệ 3:1), jpg/png/webp tối đa 5MB. Trên điện thoại banner hiển thị tỉ lệ 2:1 nên
-            hai bên ảnh bị cắt bớt: đặt chữ và hình chính ở giữa ảnh.
-          </p>
+          <p className="muted small">Khuyến nghị 1920×640 px (tỉ lệ 3:1), jpg/png/webp tối đa 5MB.</p>
           <FieldError message={errors.image} />
         </div>
 
@@ -264,7 +395,16 @@ export function AdminBannersPage() {
               {list.map((b) => (
                 <tr key={b.id} className={b.displayStatus === 'SHOWING' ? '' : 'row-muted'}>
                   <td>
-                    <div className="banner-thumb">{b.imageUrl ? <img src={b.imageUrl} alt="" loading="lazy" /> : '—'}</div>
+                    <div className="banner-thumb">{b.imageUrl ? (
+                        <img
+                          src={b.imageUrl}
+                          alt=""
+                          loading="lazy"
+                          style={{ objectPosition: `${b.imagePositionX}% ${b.imagePositionY}%` }}
+                        />
+                      ) : (
+                        '—'
+                      )}</div>
                   </td>
                   <td>
                     <strong>{b.title || <span className="muted">(không có tiêu đề)</span>}</strong>

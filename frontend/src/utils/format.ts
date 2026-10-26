@@ -148,6 +148,12 @@ export const REVIEW_STATUS_LABEL: Record<ReviewStatus, string> = {
   HIDDEN: 'Đã ẩn',
 };
 
+export const REVIEW_STATUS_TONE: Record<ReviewStatus, Tone> = {
+  PENDING: 'warning',
+  APPROVED: 'success',
+  HIDDEN: 'neutral',
+};
+
 export const COUPON_TYPE_LABEL: Record<CouponType, string> = {
   PERCENT: 'Giảm theo %',
   FIXED: 'Giảm số tiền',

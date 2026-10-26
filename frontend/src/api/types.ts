@@ -199,14 +199,49 @@ export interface CategoryRequest {
 
 export type ReviewStatus = 'PENDING' | 'APPROVED' | 'HIDDEN';
 
+export type ReviewMediaType = 'IMAGE' | 'VIDEO';
+
+export interface ReviewMedia {
+  id: number;
+  type: ReviewMediaType;
+  url: string;
+}
+
 export interface Review {
   id: number;
   productId: number;
+  /** product*, orderCode: chỉ có ở trang của khách và admin */
+  productName?: string | null;
+  /** null nếu sản phẩm đã ẩn/xóa */
+  productSlug?: string | null;
+  productThumbnail?: string | null;
+  /** Phân loại đã mua, VD "Tiêu chuẩn" */
+  variantName?: string | null;
   authorName: string;
   rating: number;
   content?: string | null;
+  media?: ReviewMedia[];
+  reply?: string | null;
+  repliedAt?: string | null;
   status: ReviewStatus;
+  edited: boolean;
+  /** Chỉ có ở trang của khách: còn được sửa (1 lần) không, và hạn sửa */
+  editable?: boolean;
+  editableUntil?: string | null;
+  orderCode?: string | null;
   createdAt: string;
+}
+
+/** Sản phẩm đã giao, chưa đánh giá, còn hạn */
+export interface PendingReview {
+  orderCode: string;
+  productId: number;
+  productName: string;
+  productSlug?: string | null;
+  thumbnailUrl?: string | null;
+  variantName?: string | null;
+  deliveredAt: string;
+  deadline: string;
 }
 
 export interface CreateReviewRequest {
@@ -214,6 +249,21 @@ export interface CreateReviewRequest {
   productId: number;
   rating: number;
   content?: string | null;
+}
+
+export interface UpdateReviewRequest {
+  rating: number;
+  content?: string | null;
+  /** Ảnh/video cũ giữ lại */
+  keepMediaIds: number[];
+}
+
+/** distribution: số sao ("1".."5") -> số đánh giá; withMedia: số đánh giá có ảnh/video */
+export interface RatingBreakdown {
+  average?: number | null;
+  count: number;
+  distribution: Record<string, number>;
+  withMedia: number;
 }
 
 // ------------------------------------------------------------------ delivery
@@ -498,6 +548,9 @@ export interface PublicBanner {
   buttonText?: string | null;
   linkUrl?: string | null;
   imageUrl: string;
+  /** Phần ảnh hiển thị khi khung cắt bớt ảnh (object-position %), 50/50 = giữa ảnh */
+  imagePositionX: number;
+  imagePositionY: number;
 }
 
 export type BannerDisplayStatus = 'SHOWING' | 'INACTIVE' | 'NO_IMAGE' | 'SCHEDULED' | 'EXPIRED';
@@ -509,6 +562,8 @@ export interface Banner {
   buttonText?: string | null;
   linkUrl?: string | null;
   imageUrl?: string | null;
+  imagePositionX: number;
+  imagePositionY: number;
   sortOrder: number;
   active: boolean;
   startsAt?: string | null;
@@ -522,6 +577,8 @@ export interface BannerRequest {
   subtitle: string | null;
   buttonText: string | null;
   linkUrl: string | null;
+  imagePositionX: number;
+  imagePositionY: number;
   sortOrder: number;
   active: boolean;
   startsAt: string | null;

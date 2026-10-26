@@ -12,6 +12,7 @@ public enum ErrorCode {
     IDEMPOTENCY_KEY_REQUIRED(HttpStatus.BAD_REQUEST, "Thiếu header Idempotency-Key"),
     INVALID_TOKEN(HttpStatus.BAD_REQUEST, "Liên kết không hợp lệ hoặc đã hết hạn"),
     INVALID_FILE(HttpStatus.BAD_REQUEST, "Tệp không hợp lệ (chỉ nhận jpg/png/webp, tối đa 5MB)"),
+    INVALID_VIDEO(HttpStatus.BAD_REQUEST, "Video không hợp lệ (chỉ nhận mp4/mov/webm, tối đa 30MB)"),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Chưa đăng nhập hoặc phiên đã hết hạn"),
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "Email hoặc mật khẩu không đúng"),
     FORBIDDEN(HttpStatus.FORBIDDEN, "Bạn không có quyền thực hiện thao tác này"),
@@ -25,7 +26,7 @@ public enum ErrorCode {
     CONFLICT(HttpStatus.CONFLICT, "Dữ liệu đã bị người khác thay đổi, vui lòng tải lại"),
     DUPLICATE(HttpStatus.CONFLICT, "Dữ liệu đã tồn tại"),
     ACCOUNT_LOCKED(HttpStatus.LOCKED, "Tài khoản tạm khóa do đăng nhập sai nhiều lần, thử lại sau 15 phút"),
-    PAYLOAD_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE, "Tệp quá lớn (tối đa 5MB)"),
+    PAYLOAD_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE, "Tệp quá lớn (ảnh tối đa 5MB, video tối đa 30MB)"),
     TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "Bạn thao tác quá nhanh, vui lòng thử lại sau"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Có lỗi xảy ra, vui lòng thử lại sau");
 

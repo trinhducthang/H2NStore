@@ -10,6 +10,7 @@ import { AccountLayout } from './pages/account/AccountLayout';
 import { AddressesPage } from './pages/account/AddressesPage';
 import { MyOrderDetailPage } from './pages/account/MyOrderDetailPage';
 import { MyOrdersPage } from './pages/account/MyOrdersPage';
+import { MyReviewsPage } from './pages/account/MyReviewsPage';
 import { ProfilePage } from './pages/account/ProfilePage';
 import { ForgotPasswordPage, LoginPage, RegisterPage, ResetPasswordPage } from './pages/AuthPages';
 import { CartPage } from './pages/CartPage';
@@ -88,6 +89,7 @@ export default function App() {
                   <Route index element={<Navigate to="orders" replace />} />
                   <Route path="orders" element={<MyOrdersPage />} />
                   <Route path="orders/:code" element={<MyOrderDetailPage />} />
+                  <Route path="reviews" element={<MyReviewsPage />} />
                   <Route path="profile" element={<ProfilePage />} />
                   <Route path="addresses" element={<AddressesPage />} />
                 </Route>

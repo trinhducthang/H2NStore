@@ -7,6 +7,7 @@ import com.flowershop.catalog.entity.CategoryType;
 import com.flowershop.catalog.service.CategoryService;
 import com.flowershop.catalog.service.ProductQueryService;
 import com.flowershop.common.dto.PageResponse;
+import com.flowershop.review.dto.ReviewDtos.RatingBreakdown;
 import com.flowershop.review.dto.ReviewDtos.RatingSummary;
 import com.flowershop.review.dto.ReviewDtos.ReviewResponse;
 import com.flowershop.review.service.ReviewService;
@@ -62,10 +63,20 @@ public class PublicCatalogController {
         return productQueryService.related(slug);
     }
 
+    @Operation(summary = "Đánh giá đã duyệt", description = "rating: lọc theo số sao; withMedia=true: chỉ đánh giá có ảnh/video")
     @GetMapping("/products/{slug}/reviews")
     public PageResponse<ReviewResponse> reviews(@PathVariable String slug,
+                                                @RequestParam(required = false) Integer rating,
+                                                @RequestParam(defaultValue = "false") boolean withMedia,
                                                 @RequestParam(required = false) Integer page,
                                                 @RequestParam(required = false) Integer size) {
-        return reviewService.approvedForProduct(productQueryService.getPublicProductId(slug), page, size);
+        return reviewService.approvedForProduct(productQueryService.getPublicProductId(slug), rating, withMedia,
+                page, size);
+    }
+
+    @Operation(summary = "Điểm trung bình, số đánh giá theo từng mức sao, số đánh giá có ảnh/video")
+    @GetMapping("/products/{slug}/reviews/summary")
+    public RatingBreakdown reviewSummary(@PathVariable String slug) {
+        return reviewService.ratingBreakdown(productQueryService.getPublicProductId(slug));
     }
 }

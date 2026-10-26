@@ -80,6 +80,7 @@ orders 1──n order_status_history
 orders n──1 coupons (nullable)
 orders n──1 delivery_zones
 products 1──n reviews n──1 users
+reviews 1──n review_media
 ```
 
 ### Chi tiết các bảng
@@ -100,7 +101,8 @@ products 1──n reviews n──1 users
 | order\_status\_history | order\_id, from\_status, to\_status, changed\_by, reason | Ghi mỗi lần đổi trạng thái |
 | coupons | code, type, value, max\_discount, min\_order, usage\_limit, used\_count, starts\_at, ends\_at, active | type: PERCENT, FIXED; code UNIQUE |
 | delivery\_zones | name, districts, shipping\_fee, express\_fee, active | Ví dụ: Nội thành, Ngoại thành |
-| reviews | product\_id, user\_id, order\_id, rating, content, status | rating 1–5; UNIQUE(order\_id, product\_id) |
+| reviews | product\_id, user\_id, order\_id, variant\_name, rating, content, status, edited, reply, replied\_at | rating 1–5; UNIQUE(order\_id, product\_id); status: PENDING, APPROVED, HIDDEN; edited: khách đã dùng lượt sửa |
+| review\_media | review\_id, type, url, storage\_key, sort\_order | type: IMAGE (≤5/đánh giá), VIDEO (≤1/đánh giá) |
 
 ### Enum
 
@@ -179,7 +181,8 @@ Prefix chung là `/api`. API công khai nằm dưới `/api/public`, API quản 
 | GET | /api/public/products | P | Danh sách + lọc: `q`, `categorySlug`, `minPrice`, `maxPrice`, `sort` (price,asc / newest / bestseller), `page`, `size` |
 | GET | /api/public/products/{slug} | P | Chi tiết, kèm variants, images, điểm đánh giá trung bình |
 | GET | /api/public/products/{slug}/related | P | Tối đa 8 sản phẩm cùng danh mục |
-| GET | /api/public/products/{slug}/reviews | P | Đánh giá đã duyệt, phân trang |
+| GET | /api/public/products/{slug}/reviews | P | Đánh giá đã duyệt, phân trang; lọc `rating`, `withMedia=true` |
+| GET | /api/public/products/{slug}/reviews/summary | P | Điểm trung bình, số đánh giá theo từng mức sao, số đánh giá có ảnh/video |
 | GET | /api/public/delivery/zones | P | Khu vực giao và phí ship |
 | GET | /api/public/delivery/slots?date= | P | Khung giờ còn nhận đơn trong ngày đó |
 | POST | /api/public/coupons/validate | P | Kiểm tra mã + subtotal, trả số tiền giảm |
@@ -203,7 +206,10 @@ Khách vãng lai giữ giỏ hàng ở localStorage phía frontend. Khi đăng n
 | POST | /api/me/orders/{code}/cancel | C | Chỉ hủy được khi đơn còn PENDING |
 | GET, PUT | /api/me/profile | C | Xem, sửa hồ sơ |
 | GET, POST, PUT, DELETE | /api/me/addresses | C | Sổ địa chỉ |
-| POST | /api/me/reviews | C | Đánh giá sản phẩm trong đơn đã DELIVERED |
+| GET | /api/me/reviews/pending | C | Sản phẩm đã giao, còn hạn, chưa đánh giá (`?orderCode=` để lọc 1 đơn) |
+| GET | /api/me/reviews | C | Đánh giá của tôi (kèm trạng thái duyệt, còn sửa được không) |
+| POST | /api/me/reviews | C | Multipart: phần `review` (JSON) + `files` (≤5 ảnh jpg/png/webp 5MB, ≤1 video mp4/mov/webm 30MB). Chỉ sản phẩm trong đơn của mình đã DELIVERED, trong `app.review.window-days` ngày sau khi giao |
+| PUT | /api/me/reviews/{id} | C | Sửa 1 lần trong `window-days` ngày sau khi gửi; `keepMediaIds` = ảnh/video cũ giữ lại; sửa xong về PENDING |
 
 **Ví dụ `POST /api/orders`:**
 
@@ -245,7 +251,9 @@ Response `201`: `{ code, status, subtotal, shippingFee, discount, total, payment
 | CRUD | /api/admin/delivery-zones | A | Khu vực, phí ship |
 | GET | /api/admin/users | A | Danh sách khách hàng |
 | PATCH | /api/admin/users/{id}/enabled | A | Khóa / mở tài khoản |
-| GET, PATCH | /api/admin/reviews | S, A | Duyệt / ẩn đánh giá |
+| GET, PATCH | /api/admin/reviews | S, A | Danh sách (lọc `status`, `rating`, `withMedia`), duyệt / ẩn đánh giá |
+| PUT | /api/admin/reviews/{id}/reply | S, A | Shop phản hồi công khai (để trống = gỡ) |
+| DELETE | /api/admin/reviews/{id}/media/{mediaId} | S, A | Gỡ 1 ảnh/video không phù hợp |
 | GET | /api/admin/reports/summary?from=&to= | A | Doanh thu, số đơn, top sản phẩm |
 | GET | /api/admin/reports/export?from=&to= | A | Xuất Excel (Apache POI) |
 

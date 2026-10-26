@@ -10,6 +10,9 @@ import com.flowershop.order.event.OrderEvents.OrderPaidEvent;
 import com.flowershop.order.event.OrderEvents.OrderStatusChangedEvent;
 import com.flowershop.order.service.OrderService;
 import com.flowershop.payment.event.PaymentNeedsAttentionEvent;
+import com.flowershop.review.dto.ReviewDtos.ReviewNotificationView;
+import com.flowershop.review.event.ReviewSubmittedEvent;
+import com.flowershop.review.service.ReviewService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -33,6 +36,7 @@ public class NotificationListener {
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final OrderService orderService;
+    private final ReviewService reviewService;
     private final TelegramNotifier telegram;
     private final EmailSender email;
     private final AppProperties props;
@@ -43,7 +47,7 @@ public class NotificationListener {
         OrderNotificationView o = orderService.notificationView(event.orderId());
         telegram.send("""
                 🌸 <b>ĐƠN MỚI %s</b>
-                Người gửi: %s - %s
+                Người đặt: %s - %s
                 Người nhận: %s - %s
                 Địa chỉ: %s (%s)
                 Giao: %s, %s
@@ -103,6 +107,24 @@ public class NotificationListener {
                 %s""".formatted(event.transactionId(), escape(event.status()), MoneyFormat.vnd(event.amount()),
                 escape(nullToDash(event.content())), escape(nullToDash(event.orderCode())),
                 escape(nullToDash(event.note()))));
+    }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onReviewSubmitted(ReviewSubmittedEvent event) {
+        ReviewNotificationView r = reviewService.notificationView(event.reviewId());
+        String content = r.content() == null ? "-"
+                : r.content().length() > 300 ? r.content().substring(0, 300) + "..." : r.content();
+        telegram.send("""
+                ⭐ <b>Đánh giá %s chờ duyệt</b>: %s
+                %s (%d/5)%s
+                %s
+                Duyệt tại: %s""".formatted(
+                event.edited() ? "đã sửa" : "mới", escape(r.productName()),
+                "★".repeat(r.rating()) + "☆".repeat(5 - r.rating()), r.rating(),
+                r.imageCount() + r.videoCount() > 0
+                        ? " · %d ảnh, %d video".formatted(r.imageCount(), r.videoCount()) : "",
+                escape(content), escape(props.frontendUrl() + "/admin/reviews")));
     }
 
     @Async

@@ -19,10 +19,14 @@ spring:
         default_batch_fetch_size: 50
   flyway:
     enabled: true
+    placeholders:
+      seed-default-categories: true   # V5: tạo danh mục mặc định
   servlet:
     multipart:
-      max-file-size: 5MB
-      max-request-size: 30MB
+      # Ảnh tối đa 5MB (ImageValidator), video đánh giá tối đa 30MB (VideoValidator)
+      max-file-size: 30MB
+      # 1 đánh giá: 5 ảnh + 1 video
+      max-request-size: 60MB
   jackson:
     time-zone: Asia/Ho_Chi_Minh
     default-property-inclusion: non_null
@@ -97,6 +101,8 @@ app:
     type: local                 # local | cloudinary (chưa cài)
     local-dir: ${STORAGE_DIR:./uploads}
     public-url: ${STORAGE_PUBLIC_URL:/uploads}
+  review:
+    window-days: 30             # được đánh giá trong 30 ngày sau khi giao; sửa 1 lần trong 30 ngày sau khi đánh giá
   mail:
     from: ${MAIL_FROM:no-reply@flowershop.local}
   telegram:

@@ -35,7 +35,7 @@ public class BannerService {
         return bannerRepository.findByActiveTrueAndImageUrlIsNotNullOrderBySortOrderAscIdAsc().stream()
                 .filter(b -> b.isInWindow(now))
                 .map(b -> new PublicBanner(b.getId(), b.getTitle(), b.getSubtitle(), b.getButtonText(),
-                        b.getLinkUrl(), b.getImageUrl()))
+                        b.getLinkUrl(), b.getImageUrl(), b.getImagePositionX(), b.getImagePositionY()))
                 .toList();
     }
 
@@ -92,6 +92,8 @@ public class BannerService {
         banner.setSubtitle(req.subtitle());
         banner.setButtonText(req.buttonText());
         banner.setLinkUrl(req.linkUrl());
+        banner.setImagePositionX(req.imagePositionX() != null ? req.imagePositionX() : 50);
+        banner.setImagePositionY(req.imagePositionY() != null ? req.imagePositionY() : 50);
         banner.setSortOrder(req.sortOrder() != null ? req.sortOrder() : 0);
         banner.setActive(req.active() == null || req.active());
         banner.setStartsAt(req.startsAt());
@@ -124,7 +126,7 @@ public class BannerService {
             status = "SHOWING";
         }
         return new BannerResponse(b.getId(), b.getTitle(), b.getSubtitle(), b.getButtonText(), b.getLinkUrl(),
-                b.getImageUrl(), b.getSortOrder(), b.isActive(), b.getStartsAt(), b.getEndsAt(), status,
+                b.getImageUrl(), b.getImagePositionX(), b.getImagePositionY(), b.getSortOrder(), b.isActive(), b.getStartsAt(), b.getEndsAt(), status,
                 b.getUpdatedAt());
     }
 }

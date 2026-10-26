@@ -118,9 +118,9 @@ export function OrderDetailView({
         </section>
 
         <section className="card">
-          <h3 className="card-title">Người gửi & thanh toán</h3>
+          <h3 className="card-title">Người đặt & thanh toán</h3>
           <dl className="info-list">
-            <dt>Người gửi</dt>
+            <dt>Người đặt</dt>
             <dd>
               {order.sender.name}
               {order.sender.phone && ` · ${order.sender.phone}`}

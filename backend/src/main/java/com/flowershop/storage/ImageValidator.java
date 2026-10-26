@@ -30,6 +30,18 @@ public final class ImageValidator {
         } catch (IOException e) {
             throw new BusinessException(ErrorCode.INVALID_FILE);
         }
+        String ext = extensionOf(head);
+        if (ext == null) {
+            throw new BusinessException(ErrorCode.INVALID_FILE);
+        }
+        return ext;
+    }
+
+    /** @return jpg | png | webp, hoặc null nếu 12 byte đầu không phải ảnh được hỗ trợ */
+    public static String extensionOf(byte[] head) {
+        if (head.length < 12) {
+            return null;
+        }
         if ((head[0] & 0xFF) == 0xFF && (head[1] & 0xFF) == 0xD8 && (head[2] & 0xFF) == 0xFF) {
             return "jpg";
         }
@@ -40,6 +52,6 @@ public final class ImageValidator {
                 && head[8] == 'W' && head[9] == 'E' && head[10] == 'B' && head[11] == 'P') {
             return "webp";
         }
-        throw new BusinessException(ErrorCode.INVALID_FILE);
+        return null;
     }
 }

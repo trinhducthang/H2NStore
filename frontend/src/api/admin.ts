@@ -151,11 +151,26 @@ export const adminApi = {
     request<User>(`/api/admin/users/${id}/role`, { method: 'PATCH', body: { role } }),
 
   // ---------------------------------------------------------------- đánh giá (STAFF, ADMIN)
-  reviews: (query: { status?: ReviewStatus | ''; page?: number; size?: number }) =>
-    request<PageResponse<Review>>('/api/admin/reviews', { query: { ...query } }),
+  reviews: (query: {
+    status?: ReviewStatus | '';
+    rating?: number | '';
+    withMedia?: boolean;
+    page?: number;
+    size?: number;
+  }) =>
+    request<PageResponse<Review>>('/api/admin/reviews', {
+      query: { ...query, withMedia: query.withMedia || undefined },
+    }),
 
   setReviewStatus: (id: number, status: ReviewStatus) =>
     request<Review>(`/api/admin/reviews/${id}`, { method: 'PATCH', body: { status } }),
+
+  /** Để trống = gỡ phản hồi */
+  replyReview: (id: number, reply: string) =>
+    request<Review>(`/api/admin/reviews/${id}/reply`, { method: 'PUT', body: { reply } }),
+
+  deleteReviewMedia: (id: number, mediaId: number) =>
+    request<Review>(`/api/admin/reviews/${id}/media/${mediaId}`, { method: 'DELETE' }),
 
   // ---------------------------------------------------------------- báo cáo (ADMIN)
   reportSummary: (from: string, to: string) =>

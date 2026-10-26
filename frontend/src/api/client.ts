@@ -192,6 +192,54 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
   return (await res.json()) as T;
 }
 
+export interface UploadOptions {
+  method?: 'POST' | 'PUT';
+  /** Tiến độ gửi lên, 0..1 */
+  onProgress?: (ratio: number) => void;
+}
+
+/**
+ * Gửi multipart có báo tiến độ (fetch không báo được tiến độ upload, nên dùng XMLHttpRequest).
+ * Gặp 401 thì làm mới phiên rồi gửi lại một lần như request().
+ */
+export async function upload<T>(path: string, form: FormData, opts: UploadOptions = {}): Promise<T> {
+  const sendOnce = () =>
+    new Promise<XMLHttpRequest>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open(opts.method ?? 'POST', path);
+      xhr.withCredentials = true;
+      xhr.setRequestHeader('Accept', 'application/json');
+      if (accessToken) xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) opts.onProgress?.(e.loaded / e.total);
+      };
+      xhr.onload = () => resolve(xhr);
+      xhr.onerror = () => reject(new ApiError(0, null, fallbackMessage(0)));
+      xhr.send(form);
+    });
+
+  let xhr = await sendOnce();
+  if (xhr.status === 401) {
+    const refreshed = await refreshSession();
+    if (refreshed) {
+      opts.onProgress?.(0);
+      xhr = await sendOnce();
+    }
+  }
+  let body: unknown = null;
+  if ((xhr.getResponseHeader('Content-Type') ?? '').includes('json')) {
+    try {
+      body = JSON.parse(xhr.responseText);
+    } catch {
+      body = null;
+    }
+  }
+  if (xhr.status < 200 || xhr.status >= 300) {
+    throw new ApiError(xhr.status, body as Partial<ApiErrorBody> | null, fallbackMessage(xhr.status));
+  }
+  return body as T;
+}
+
 /** Tải file (VD: xuất Excel) kèm Bearer token. */
 export async function requestBlob(
   path: string,

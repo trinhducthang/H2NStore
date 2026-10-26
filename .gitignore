@@ -1,5 +1,7 @@
 # Bí mật
 .env
+# Tài liệu triển khai dự án khác, chứa mật khẩu máy chủ (repo này public)
+QTTT_deployment_guide*.docx
 
 # Backend
 backend/target/
@@ -8,6 +10,7 @@ backend/uploads/
 # Frontend
 frontend/node_modules/
 frontend/dist/
+*.tsbuildinfo
 
 # Backup
 backups/
