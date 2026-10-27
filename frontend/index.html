@@ -3,7 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      SEO: nginx (SSI, xem nginx.conf) thay khối mặc định dưới đây bằng thẻ backend dựng theo URL đang mở:
+      title, description, canonical, Open Graph, JSON-LD. Chạy dev (Vite) hoặc backend lỗi thì giữ khối mặc định.
+    -->
+    <!--# block name="seo_head" -->
+    <title>H2N Store</title>
     <meta name="description" content="H2N Store - hoa tươi, đồ gia dụng, đồ chơi, mẹ & bé, văn phòng phẩm: đặt online, giao tận nơi, chọn ngày giờ giao, thanh toán QR tự xác nhận." />
+    <!--# endblock -->
+    <!--# include virtual="/__seo/head" stub="seo_head" -->
     <meta name="theme-color" content="#b0305a" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌸</text></svg>" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -12,10 +20,12 @@
       href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Dancing+Script:wght@600&family=Playfair+Display:wght@600;700&display=swap&subset=vietnamese"
       rel="stylesheet"
     />
-    <title>H2N Store</title>
+    <!-- Nội dung tóm tắt trong #root chỉ dành cho bot và trình duyệt tắt JS; có JS thì React thay bằng giao diện thật -->
+    <style>.seo-fallback { display: none; }</style>
+    <noscript><style>.seo-fallback { display: block; }</style></noscript>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><!--# include virtual="/__seo/body" --></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -112,6 +112,7 @@ docker compose up -d --build
 - SSL qua Cloudflare. Nếu đi qua Cloudflare proxy, nên cấu hình nginx `real_ip_header CF-Connecting-IP` + `set_real_ip_from <dải IP Cloudflare>` để rate limit theo IP thật của khách.
 - Backup: thêm cron `30 2 * * * /đường-dẫn/scripts/backup.sh`, rồi đồng bộ thư mục `backups/` ra ngoài VPS.
 - Bật Redis cache: đặt `CACHE_TYPE=redis`, `REDIS_ENABLED=true` trong `.env`, chạy `docker compose --profile redis up -d`.
+- SEO: nginx bật SSI cho `index.html`, mỗi trang chèn thẻ title/description/canonical/Open Graph/JSON-LD và nội dung tóm tắt do backend dựng theo URL (`/api/public/seo/head`, `/body`), nên bot AI và trình xem trước link Zalo/Facebook (không chạy JS) vẫn đọc được. `/robots.txt`, `/sitemap.xml`, `/llms.txt` sinh từ dữ liệu thật. `FRONTEND_URL` phải là domain chính thức (đường dẫn canonical, sitemap lấy theo nó). Khai báo `https://<domain>/sitemap.xml` trong Google Search Console.
 
 ## 4. Khác biệt so với đặc tả
 

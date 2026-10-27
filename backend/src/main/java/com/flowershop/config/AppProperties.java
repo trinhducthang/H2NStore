@@ -19,7 +19,8 @@ public record AppProperties(
         Telegram telegram,
         Sepay sepay,
         Review review,
-        Geocoding geocoding) {
+        Geocoding geocoding,
+        Seo seo) {
 
     public record Jwt(String secret, Duration accessTtl, Duration refreshTtl, boolean cookieSecure) {
     }
@@ -53,6 +54,10 @@ public record AppProperties(
 
     /** Dịch vụ đổi tọa độ thành địa chỉ, theo API của Nominatim */
     public record Geocoding(String baseUrl, String userAgent) {
+    }
+
+    /** Thông tin shop cho thẻ meta, JSON-LD, llms.txt; phone/address trống thì bỏ qua */
+    public record Seo(String siteName, String phone, String address) {
     }
 
     public record Sepay(String webhookApiKey, String bankCode, String accountNumber, String accountName,

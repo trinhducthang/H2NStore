@@ -113,6 +113,12 @@ app:
     # Nominatim công cộng: tối đa 1 request/giây, bắt buộc User-Agent nêu tên ứng dụng.
     base-url: ${GEOCODING_URL:https://nominatim.openstreetmap.org}
     user-agent: H2N-Store/1.0 (${FRONTEND_URL:http://localhost:5173})
+  seo:
+    # Thẻ meta, JSON-LD, sitemap.xml, robots.txt, llms.txt; đường dẫn tuyệt đối lấy theo FRONTEND_URL.
+    # Cùng biến SHOP_* với frontend. Hotline/địa chỉ để trống thì không đưa vào dữ liệu có cấu trúc.
+    site-name: ${SHOP_NAME:H2N Store}
+    phone: ${SHOP_HOTLINE:}
+    address: ${SHOP_ADDRESS:}
   sepay:
     # API Key cấu hình ở my.sepay.vn > Webhooks (kiểu chứng thực "API Key").
     # SePay gửi header: Authorization: Apikey <api-key>

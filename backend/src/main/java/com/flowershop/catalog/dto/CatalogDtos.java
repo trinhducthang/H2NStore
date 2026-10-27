@@ -40,6 +40,10 @@ public final class CatalogDtos {
     public record ProductRef(Long id, String name, String slug, String thumbnailUrl) {
     }
 
+    /** Trang sản phẩm trong sitemap.xml */
+    public record SitemapProduct(String slug, OffsetDateTime updatedAt) {
+    }
+
     public record VariantResponse(Long id, String name, String sku, long price, Long salePrice,
                                   long effectivePrice, int stock, boolean active) {
     }
