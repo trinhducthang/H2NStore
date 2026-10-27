@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useAsync, useDebouncedValue } from '../hooks/useAsync';
 import { addDays, formatVnd, todayVN } from '../utils/format';
+import { locateCurrentAddress } from '../utils/geolocation';
 import { cleanPhone, EMAIL_REGEX, isValidPhone, PHONE_MESSAGE, uuid } from '../utils/validation';
 
 interface CheckoutForm {
@@ -95,6 +96,8 @@ export function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<number | ''>('');
+  const [locating, setLocating] = useState(false);
+  const [locateNote, setLocateNote] = useState<{ error: boolean; text: string } | null>(null);
 
   // Sửa field nào thì ẩn lỗi của field đó
   const set = <K extends keyof CheckoutForm>(key: K, value: CheckoutForm[K]) => {
@@ -138,6 +141,7 @@ export function CheckoutPage() {
 
   const applyAddress = (a: Address) => {
     setSelectedAddressId(a.id);
+    setLocateNote(null);
     setForm((f) => ({
       ...f,
       receiverName: a.receiverName,
@@ -145,6 +149,28 @@ export function CheckoutPage() {
       deliveryAddress: formatAddress(a),
     }));
     setErrors((e) => withoutKeys(e, ['receiver.name', 'receiver.phone', 'deliveryAddress']));
+  };
+
+  // Nút "Vị trí hiện tại": GPS của trình duyệt -> backend đổi thành địa chỉ, khách sửa lại số nhà nếu cần
+  const fillCurrentLocation = async () => {
+    setLocating(true);
+    setLocateNote(null);
+    try {
+      const { address, accuracy } = await locateCurrentAddress();
+      setSelectedAddressId('');
+      set('deliveryAddress', formatAddress(address));
+      setLocateNote({
+        error: false,
+        text:
+          accuracy > 100
+            ? `Vị trí có thể lệch khoảng ${Math.round(accuracy)}m, vui lòng kiểm tra lại địa chỉ.`
+            : 'Đã điền theo vị trí hiện tại, vui lòng bổ sung số nhà, ngõ/ngách nếu thiếu.',
+      });
+    } catch (err) {
+      setLocateNote({ error: true, text: errorMessage(err) });
+    } finally {
+      setLocating(false);
+    }
   };
 
   // Điền sẵn địa chỉ mặc định (một lần, và chỉ khi người dùng chưa tự nhập địa chỉ)
@@ -365,18 +391,27 @@ export function CheckoutPage() {
                 />
                 <FieldError message={errors['sender.email']} />
               </label>
-              <label className="field field-full">
-                <span className="field-label">
+              <div className="field field-full">
+                <label className="field-label" htmlFor="delivery-address">
                   Địa chỉ giao <span className="required">*</span>
-                </span>
-                <input
-                  value={form.deliveryAddress}
-                  maxLength={500}
-                  placeholder="Số nhà, đường, phường/xã, quận/huyện"
-                  onChange={(e) => set('deliveryAddress', e.target.value)}
-                />
+                </label>
+                <div className="input-group">
+                  <input
+                    id="delivery-address"
+                    value={form.deliveryAddress}
+                    maxLength={500}
+                    placeholder="Số nhà, đường, phường/xã, tỉnh/thành"
+                    onChange={(e) => set('deliveryAddress', e.target.value)}
+                  />
+                  <button type="button" className="btn btn-outline" disabled={locating} onClick={fillCurrentLocation}>
+                    {locating ? 'Đang lấy vị trí...' : '📍 Vị trí hiện tại'}
+                  </button>
+                </div>
+                {locateNote && (
+                  <p className={locateNote.error ? 'field-error' : 'muted small'}>{locateNote.text}</p>
+                )}
                 <FieldError message={errors.deliveryAddress} />
-              </label>
+              </div>
             </div>
 
             <p className="field-label">

@@ -108,6 +108,11 @@ app:
   telegram:
     bot-token: ${TG_TOKEN:}
     chat-id: ${TG_CHAT_ID:}
+  geocoding:
+    # Nút "Vị trí hiện tại" ở trang đặt hàng: đổi tọa độ GPS thành địa chỉ.
+    # Nominatim công cộng: tối đa 1 request/giây, bắt buộc User-Agent nêu tên ứng dụng.
+    base-url: ${GEOCODING_URL:https://nominatim.openstreetmap.org}
+    user-agent: H2N-Store/1.0 (${FRONTEND_URL:http://localhost:5173})
   sepay:
     # API Key cấu hình ở my.sepay.vn > Webhooks (kiểu chứng thực "API Key").
     # SePay gửi header: Authorization: Apikey <api-key>

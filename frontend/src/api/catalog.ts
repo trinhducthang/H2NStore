@@ -3,6 +3,7 @@ import type {
   Category,
   CategoryType,
   DeliveryZone,
+  LocationAddress,
   PageResponse,
   ProductDetail,
   ProductSummary,
@@ -52,6 +53,9 @@ export const catalogApi = {
 
   slots: (date: string, zoneId?: number | null) =>
     request<SlotAvailability[]>('/api/public/delivery/slots', { query: { date, zoneId } }),
+
+  reverseGeocode: (lat: number, lng: number) =>
+    request<LocationAddress>('/api/public/delivery/reverse-geocode', { query: { lat, lng } }),
 
   validateCoupon: (code: string, subtotal: number) =>
     request<ValidateCouponResponse>('/api/public/coupons/validate', { method: 'POST', body: { code, subtotal } }),

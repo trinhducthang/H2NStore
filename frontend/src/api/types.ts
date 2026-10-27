@@ -298,6 +298,12 @@ export interface SlotAvailability {
   reason?: string | null;
 }
 
+/** Địa chỉ tại tọa độ GPS, cùng dạng với sổ địa chỉ (district chỉ có ở vùng bản đồ chưa theo ĐVHC mới) */
+export interface LocationAddress extends Partial<Pick<Address, 'addressLine' | 'ward' | 'district' | 'city'>> {
+  lat: number;
+  lng: number;
+}
+
 // ------------------------------------------------------------------ coupons
 
 export type CouponType = 'PERCENT' | 'FIXED';

@@ -28,7 +28,9 @@ public enum ErrorCode {
     ACCOUNT_LOCKED(HttpStatus.LOCKED, "Tài khoản tạm khóa do đăng nhập sai nhiều lần, thử lại sau 15 phút"),
     PAYLOAD_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE, "Tệp quá lớn (ảnh tối đa 5MB, video tối đa 30MB)"),
     TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "Bạn thao tác quá nhanh, vui lòng thử lại sau"),
-    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Có lỗi xảy ra, vui lòng thử lại sau");
+    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Có lỗi xảy ra, vui lòng thử lại sau"),
+    GEOCODING_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE,
+            "Chưa lấy được địa chỉ từ vị trí, vui lòng thử lại hoặc nhập tay");
 
     private final HttpStatus httpStatus;
     private final String defaultMessage;

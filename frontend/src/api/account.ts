@@ -56,6 +56,6 @@ export function isDefaultAddress(a: Address): boolean {
   return Boolean(raw.isDefault ?? raw.default);
 }
 
-export function formatAddress(a: Pick<Address, 'addressLine' | 'ward' | 'district' | 'city'>): string {
+export function formatAddress(a: Partial<Pick<Address, 'addressLine' | 'ward' | 'district' | 'city'>>): string {
   return [a.addressLine, a.ward, a.district, a.city].filter(Boolean).join(', ');
 }
