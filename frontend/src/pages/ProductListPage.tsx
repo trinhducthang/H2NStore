@@ -5,6 +5,7 @@ import type { Category } from '../api/types';
 import { EmptyState, ErrorBox, Loading } from '../components/Feedback';
 import { Pagination } from '../components/Pagination';
 import { ProductGrid } from '../components/ProductCard';
+import { SHOP_NAME } from '../config';
 import { useAsync } from '../hooks/useAsync';
 import { CATEGORY_TYPE_LABEL, CATEGORY_TYPES } from '../utils/format';
 
@@ -98,8 +99,12 @@ export function ProductListPage() {
     ? `Kết quả cho “${q}”`
     : (activeCategory?.name ?? (onSale ? 'Đang giảm giá' : 'Tất cả sản phẩm'));
 
+  // Khớp title server dựng (backend SeoPageService); chờ có tên danh mục để không nháy "Tất cả sản phẩm"
+  const pageTitle = `${title}${page > 0 ? ` – Trang ${page + 1}` : ''} | ${SHOP_NAME}`;
+
   return (
     <div className="container section">
+      {(!categorySlug || categories.data) && <title>{pageTitle}</title>}
       <div className="page-head">
         <h1>{title}</h1>
         {products.data && <p className="muted">{products.data.totalElements} sản phẩm</p>}

@@ -524,11 +524,15 @@ function Footer() {
 
 export function Layout() {
   const location = useLocation();
+  // Trang mở đầu tiên giữ title server dựng sẵn theo URL (SSI); đã chuyển trang thì trang nào không tự đặt title
+  // sẽ về tên shop. <title> của trang con mount sau nên được React chèn lên trước và được ưu tiên.
+  const [firstKey] = useState(location.key);
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
   return (
     <div className="app-shell">
+      {location.key !== firstKey && <title>{SHOP_NAME}</title>}
       <Header />
       <main className="site-main">
         <Suspense fallback={<Loading />}>

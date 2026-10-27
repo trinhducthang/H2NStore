@@ -10,7 +10,7 @@ import { ProductThumb } from '../components/ProductThumb';
 import { QuantityInput } from '../components/QuantityInput';
 import { ReviewCard } from '../components/ReviewCard';
 import { Stars } from '../components/Stars';
-import { MAX_QUANTITY } from '../config';
+import { MAX_QUANTITY, SHOP_NAME } from '../config';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { useAsync } from '../hooks/useAsync';
@@ -236,6 +236,7 @@ export function ProductDetailPage() {
 
   return (
     <div className="container section">
+      <title>{`${p.name} | ${SHOP_NAME}`}</title>
       <nav className="breadcrumb" aria-label="Breadcrumb">
         <Link to="/">Trang chủ</Link>
         <span>/</span>

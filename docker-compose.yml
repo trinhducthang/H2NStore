@@ -62,6 +62,10 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
       MAIL_FROM: ${MAIL_FROM:-no-reply@flowershop.local}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
+      # Thẻ SEO (title, JSON-LD) và llms.txt, cùng giá trị hiển thị trên web
+      SHOP_NAME: ${SHOP_NAME:-H2N Store}
+      SHOP_HOTLINE: ${SHOP_HOTLINE:-}
+      SHOP_ADDRESS: ${SHOP_ADDRESS:-}
     volumes:
       - uploads:/app/uploads
     expose:

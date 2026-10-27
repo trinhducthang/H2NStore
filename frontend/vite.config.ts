@@ -9,6 +9,11 @@ export default defineConfig({
     proxy: {
       '/api': { target: 'http://localhost:8080', changeOrigin: false },
       '/uploads': { target: 'http://localhost:8080', changeOrigin: false },
+      // Backend sinh từ dữ liệu sản phẩm (prod: nginx.conf)
+      '^/(robots\\.txt|sitemap\\.xml|llms\\.txt)$': {
+        target: 'http://localhost:8080',
+        rewrite: (path) => `/api/public/seo${path}`,
+      },
     },
   },
   preview: {

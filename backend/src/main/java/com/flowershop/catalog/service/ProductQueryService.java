@@ -3,6 +3,7 @@ package com.flowershop.catalog.service;
 import com.flowershop.catalog.dto.CatalogDtos.ProductDetail;
 import com.flowershop.catalog.dto.CatalogDtos.ProductRef;
 import com.flowershop.catalog.dto.CatalogDtos.ProductSummary;
+import com.flowershop.catalog.dto.CatalogDtos.SitemapProduct;
 import com.flowershop.catalog.entity.Category;
 import com.flowershop.catalog.entity.Product;
 import com.flowershop.catalog.entity.ProductStatus;
@@ -77,6 +78,14 @@ public class ProductQueryService {
                 .filter(p -> p.getStatus() != ProductStatus.HIDDEN)
                 .map(Product::getId)
                 .orElseThrow(() -> BusinessException.notFound("sản phẩm"));
+    }
+
+    /** Sản phẩm mở được trang chi tiết (chưa xóa, không ẩn), cho sitemap.xml. */
+    @Transactional(readOnly = true)
+    public List<SitemapProduct> sitemapEntries() {
+        return productRepository.findByDeletedAtIsNullAndStatusNotOrderByIdAsc(ProductStatus.HIDDEN).stream()
+                .map(p -> new SitemapProduct(p.getSlug(), p.getUpdatedAt()))
+                .toList();
     }
 
     /** Tra nhanh tên, slug, ảnh đại diện theo id (gồm cả sản phẩm đã ẩn/xóa). */
