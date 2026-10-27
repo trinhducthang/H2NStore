@@ -1,9 +1,15 @@
 import { request } from './client';
-import type { AuthResponse, RegisterRequest } from './types';
+import type { AuthConfig, AuthResponse, RegisterRequest } from './types';
 
 export const authApi = {
+  config: () => request<AuthConfig>('/api/public/auth/config'),
+
   login: (email: string, password: string) =>
     request<AuthResponse>('/api/auth/login', { method: 'POST', body: { email, password } }),
+
+  /** credential: ID token nút Google trả về */
+  loginWithGoogle: (credential: string) =>
+    request<AuthResponse>('/api/auth/google', { method: 'POST', body: { credential } }),
 
   register: (req: RegisterRequest) => request<AuthResponse>('/api/auth/register', { method: 'POST', body: req }),
 

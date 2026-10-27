@@ -35,7 +35,14 @@ export interface User {
   phone?: string | null;
   role: Role;
   enabled: boolean;
+  /** false: tài khoản tạo bằng Google, đặt mật khẩu không cần mật khẩu hiện tại */
+  hasPassword: boolean;
   createdAt: string;
+}
+
+/** Không có googleClientId = shop chưa bật đăng nhập bằng Google */
+export interface AuthConfig {
+  googleClientId?: string;
 }
 
 export interface AuthResponse {

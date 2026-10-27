@@ -24,7 +24,8 @@ export const accountApi = {
 
   updateProfile: (req: UpdateProfileRequest) => request<User>('/api/me/profile', { method: 'PUT', body: req }),
 
-  changePassword: (currentPassword: string, newPassword: string) =>
+  /** currentPassword = null khi tài khoản chưa có mật khẩu (tạo bằng Google) */
+  changePassword: (currentPassword: string | null, newPassword: string) =>
     request<void>('/api/me/password', { method: 'PUT', body: { currentPassword, newPassword } }),
 
   addresses: () => request<Address[]>('/api/me/addresses'),

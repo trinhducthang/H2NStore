@@ -16,6 +16,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmailIgnoreCase(String email);
 
+    Optional<User> findByGoogleId(String googleId);
+
     @Query("""
             SELECT u FROM User u
             WHERE (:role IS NULL OR u.role = :role)

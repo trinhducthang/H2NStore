@@ -66,6 +66,8 @@ services:
       SHOP_NAME: ${SHOP_NAME:-H2N Store}
       SHOP_HOTLINE: ${SHOP_HOTLINE:-}
       SHOP_ADDRESS: ${SHOP_ADDRESS:-}
+      # Đăng nhập bằng Google (trống = ẩn nút); web đọc lúc chạy nên đổi xong chỉ cần up -d app
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     volumes:
       - uploads:/app/uploads
     expose:

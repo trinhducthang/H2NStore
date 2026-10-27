@@ -20,7 +20,8 @@ public record AppProperties(
         Sepay sepay,
         Review review,
         Geocoding geocoding,
-        Seo seo) {
+        Seo seo,
+        Google google) {
 
     public record Jwt(String secret, Duration accessTtl, Duration refreshTtl, boolean cookieSecure) {
     }
@@ -58,6 +59,10 @@ public record AppProperties(
 
     /** Thông tin shop cho thẻ meta, JSON-LD, llms.txt; phone/address trống thì bỏ qua */
     public record Seo(String siteName, String phone, String address) {
+    }
+
+    /** Đăng nhập bằng Google: OAuth Client ID loại Web application; trống = tắt */
+    public record Google(String clientId) {
     }
 
     public record Sepay(String webhookApiKey, String bankCode, String accountNumber, String accountName,

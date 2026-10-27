@@ -20,8 +20,13 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
+    /** null: tài khoản tạo bằng Google, chưa đặt mật khẩu */
+    @Column(name = "password_hash")
     private String passwordHash;
+
+    /** "sub" trong ID token của Google; null nếu chưa đăng nhập bằng Google lần nào */
+    @Column(name = "google_id")
+    private String googleId;
 
     @Column(name = "full_name", nullable = false)
     private String fullName;
