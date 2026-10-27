@@ -1,8 +1,10 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { authApi } from '../api/auth';
 import { ApiError, errorMessage } from '../api/client';
+import type { User } from '../api/types';
 import { FieldError } from '../components/Feedback';
+import { GoogleSignInButton, type GoogleButtonText } from '../components/GoogleSignInButton';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { cleanPhone, EMAIL_REGEX, isValidPhone, PHONE_MESSAGE } from '../utils/validation';
@@ -11,6 +13,34 @@ import { cleanPhone, EMAIL_REGEX, isValidPhone, PHONE_MESSAGE } from '../utils/v
 function safeRedirect(value: string | null): string | null {
   if (!value) return null;
   return value.startsWith('/') && !value.startsWith('//') ? value : null;
+}
+
+/** Sau khi đăng nhập: về trang đang mở dở, không có thì trang chủ (khách) hoặc trang quản trị (nhân viên) */
+function afterLogin(user: User, redirect: string | null): string {
+  return safeRedirect(redirect) ?? (user.role === 'CUSTOMER' ? '/' : '/admin');
+}
+
+/** Đăng nhập bằng Google ở trang đăng nhập/đăng ký: email chưa có tài khoản thì backend tự tạo */
+function GoogleLogin({ text, onError }: { text: GoogleButtonText; onError: (message: string | null) => void }) {
+  const { loginWithGoogle } = useAuth();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const redirect = params.get('redirect');
+
+  const handleCredential = useCallback(
+    async (credential: string) => {
+      onError(null);
+      try {
+        const user = await loginWithGoogle(credential);
+        navigate(afterLogin(user, redirect), { replace: true });
+      } catch (err) {
+        onError(errorMessage(err));
+      }
+    },
+    [loginWithGoogle, navigate, redirect, onError],
+  );
+
+  return <GoogleSignInButton text={text} onCredential={handleCredential} />;
 }
 
 function AuthCard({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
@@ -49,8 +79,7 @@ export function LoginPage() {
     setError(null);
     try {
       const user = await login(email.trim(), password);
-      const redirect = safeRedirect(params.get('redirect'));
-      navigate(redirect ?? (user.role === 'CUSTOMER' ? '/' : '/admin'), { replace: true });
+      navigate(afterLogin(user, params.get('redirect')), { replace: true });
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -78,6 +107,7 @@ export function LoginPage() {
         <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
           {busy ? 'Đang đăng nhập...' : 'Đăng nhập'}
         </button>
+        <GoogleLogin text="signin_with" onError={setError} />
         <div className="auth-links">
           <Link to="/forgot-password">Quên mật khẩu?</Link>
           <Link to={`/register${params.get('redirect') ? `?redirect=${encodeURIComponent(params.get('redirect')!)}` : ''}`}>
@@ -172,6 +202,7 @@ export function RegisterPage() {
         <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
           {busy ? 'Đang tạo...' : 'Đăng ký'}
         </button>
+        <GoogleLogin text="signup_with" onError={setError} />
         <div className="auth-links">
           <span className="muted">Đã có tài khoản?</span>
           <Link to="/login">Đăng nhập</Link>

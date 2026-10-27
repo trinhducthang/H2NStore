@@ -119,6 +119,10 @@ app:
     site-name: ${SHOP_NAME:H2N Store}
     phone: ${SHOP_HOTLINE:}
     address: ${SHOP_ADDRESS:}
+  google:
+    # Đăng nhập bằng Google: Client ID (loại "Web application") tạo ở Google Cloud Console, xem README.
+    # Để trống thì tắt, trang đăng nhập không hiện nút Google.
+    client-id: ${GOOGLE_CLIENT_ID:}
   sepay:
     # API Key cấu hình ở my.sepay.vn > Webhooks (kiểu chứng thực "API Key").
     # SePay gửi header: Authorization: Apikey <api-key>

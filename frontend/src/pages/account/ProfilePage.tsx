@@ -69,7 +69,10 @@ function ProfileForm() {
 }
 
 function PasswordForm() {
+  const { user, updateUser } = useAuth();
   const toast = useToast();
+  // Tài khoản tạo bằng Google chưa có mật khẩu: tạo mới, không hỏi mật khẩu hiện tại
+  const hasPassword = user?.hasPassword ?? true;
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -78,17 +81,18 @@ function PasswordForm() {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!current) return setError('Vui lòng nhập mật khẩu hiện tại');
+    if (hasPassword && !current) return setError('Vui lòng nhập mật khẩu hiện tại');
     if (next.length < 8 || next.length > 72) return setError('Mật khẩu mới từ 8 đến 72 ký tự');
     if (next !== confirm) return setError('Mật khẩu nhập lại không khớp');
     setBusy(true);
     setError(null);
     try {
-      await accountApi.changePassword(current, next);
+      await accountApi.changePassword(hasPassword ? current : null, next);
       setCurrent('');
       setNext('');
       setConfirm('');
-      toast.success('Đã đổi mật khẩu');
+      if (user && !hasPassword) updateUser({ ...user, hasPassword: true });
+      toast.success(hasPassword ? 'Đã đổi mật khẩu' : 'Đã tạo mật khẩu');
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -98,11 +102,17 @@ function PasswordForm() {
 
   return (
     <form className="card form" onSubmit={submit} noValidate>
-      <h2 className="card-title">Đổi mật khẩu</h2>
-      <label className="field">
-        <span className="field-label">Mật khẩu hiện tại</span>
-        <input type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
-      </label>
+      <h2 className="card-title">{hasPassword ? 'Đổi mật khẩu' : 'Tạo mật khẩu'}</h2>
+      {hasPassword ? (
+        <label className="field">
+          <span className="field-label">Mật khẩu hiện tại</span>
+          <input type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
+        </label>
+      ) : (
+        <p className="muted small">
+          Bạn đang đăng nhập bằng Google. Tạo mật khẩu để đăng nhập được cả bằng email {user?.email}.
+        </p>
+      )}
       <label className="field">
         <span className="field-label">Mật khẩu mới</span>
         <input type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
@@ -114,7 +124,7 @@ function PasswordForm() {
       {error && <div className="alert alert-error">{error}</div>}
       <div className="form-actions">
         <button type="submit" className="btn btn-primary" disabled={busy}>
-          {busy ? 'Đang lưu...' : 'Đổi mật khẩu'}
+          {busy ? 'Đang lưu...' : hasPassword ? 'Đổi mật khẩu' : 'Tạo mật khẩu'}
         </button>
       </div>
     </form>

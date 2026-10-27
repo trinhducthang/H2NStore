@@ -3,6 +3,7 @@ package com.flowershop.auth.controller;
 import com.flowershop.auth.dto.AuthDtos.AuthResponse;
 import com.flowershop.auth.dto.AuthDtos.AuthResult;
 import com.flowershop.auth.dto.AuthDtos.ForgotPasswordRequest;
+import com.flowershop.auth.dto.AuthDtos.GoogleLoginRequest;
 import com.flowershop.auth.dto.AuthDtos.LoginRequest;
 import com.flowershop.auth.dto.AuthDtos.RegisterRequest;
 import com.flowershop.auth.dto.AuthDtos.ResetPasswordRequest;
@@ -42,6 +43,11 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest req) {
         return withCookie(HttpStatus.OK, authService.login(req));
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<AuthResponse> google(@Valid @RequestBody GoogleLoginRequest req) {
+        return withCookie(HttpStatus.OK, authService.loginWithGoogle(req.credential()));
     }
 
     @PostMapping("/refresh")

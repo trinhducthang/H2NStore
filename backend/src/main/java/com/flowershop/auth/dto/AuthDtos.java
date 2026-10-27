@@ -22,6 +22,14 @@ public final class AuthDtos {
     public record LoginRequest(@NotBlank @Email String email, @NotBlank String password) {
     }
 
+    /** credential: ID token (JWT) mà nút Google trả cho trình duyệt */
+    public record GoogleLoginRequest(@NotBlank @Size(max = 4096) String credential) {
+    }
+
+    /** Cấu hình cho trang đăng nhập; googleClientId vắng mặt = không hiện nút Google */
+    public record AuthConfigResponse(String googleClientId) {
+    }
+
     public record ForgotPasswordRequest(@NotBlank @Email String email) {
     }
 

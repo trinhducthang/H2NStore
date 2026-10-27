@@ -74,6 +74,6 @@ npm run preview    # xem thử bản build
 | `/cart`, `/checkout` | Giỏ hàng (localStorage khi chưa đăng nhập, server khi đã đăng nhập), đặt hàng |
 | `/payment/:code?phone=` | Mã VietQR SePay, tự cập nhật khi tiền về |
 | `/order-success/:code`, `/track` | Đặt hàng thành công, tra cứu đơn |
-| `/login`, `/register`, `/forgot-password`, `/reset-password` | Tài khoản |
+| `/login`, `/register`, `/forgot-password`, `/reset-password` | Tài khoản; có nút Google khi backend đặt `GOOGLE_CLIENT_ID` |
 | `/account/*` | Đơn của tôi, hồ sơ, sổ địa chỉ, đánh giá |
 | `/admin/*` | Quản trị: đơn hàng, đối soát SePay, sản phẩm, đánh giá; ADMIN thêm báo cáo, danh mục, mã giảm giá, khu vực giao, người dùng |

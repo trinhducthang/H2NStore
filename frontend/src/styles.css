@@ -4126,6 +4126,39 @@ input[type='radio'] {
   font-size: 0.9rem;
 }
 
+/* Đăng nhập bằng Google: dòng "hoặc" + nút do Google vẽ (iframe cao 40px) */
+.google-signin {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.google-signin p {
+  margin: 0;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line-strong);
+}
+
+.google-signin-button {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+}
+
 .tabs {
   display: flex;
   gap: 4px;

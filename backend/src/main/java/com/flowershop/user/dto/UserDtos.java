@@ -18,11 +18,12 @@ public final class UserDtos {
     private UserDtos() {
     }
 
+    /** hasPassword = false: tài khoản tạo bằng Google, đặt mật khẩu không cần mật khẩu hiện tại */
     public record UserResponse(Long id, String email, String fullName, String phone, Role role,
-                               boolean enabled, OffsetDateTime createdAt) {
+                               boolean enabled, boolean hasPassword, OffsetDateTime createdAt) {
         public static UserResponse from(User u) {
             return new UserResponse(u.getId(), u.getEmail(), u.getFullName(), u.getPhone(), u.getRole(),
-                    u.isEnabled(), u.getCreatedAt());
+                    u.isEnabled(), u.getPasswordHash() != null, u.getCreatedAt());
         }
     }
 
@@ -31,8 +32,9 @@ public final class UserDtos {
             @Pattern(regexp = PhoneUtils.VN_PHONE_REGEX, message = PhoneUtils.VN_PHONE_MESSAGE) String phone) {
     }
 
+    /** currentPassword bỏ trống được khi tài khoản chưa có mật khẩu (tạo bằng Google) */
     public record ChangePasswordRequest(
-            @NotBlank String currentPassword,
+            String currentPassword,
             @NotBlank @Size(min = 8, max = 72, message = "Mật khẩu từ 8 đến 72 ký tự") String newPassword) {
     }
 

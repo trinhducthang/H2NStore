@@ -114,6 +114,22 @@ docker compose up -d --build
 - Bật Redis cache: đặt `CACHE_TYPE=redis`, `REDIS_ENABLED=true` trong `.env`, chạy `docker compose --profile redis up -d`.
 - SEO: nginx bật SSI cho `index.html`, mỗi trang chèn thẻ title/description/canonical/Open Graph/JSON-LD và nội dung tóm tắt do backend dựng theo URL (`/api/public/seo/head`, `/body`), nên bot AI và trình xem trước link Zalo/Facebook (không chạy JS) vẫn đọc được. `/robots.txt`, `/sitemap.xml`, `/llms.txt` sinh từ dữ liệu thật. `FRONTEND_URL` phải là domain chính thức (đường dẫn canonical, sitemap lấy theo nó). Khai báo `https://<domain>/sitemap.xml` trong Google Search Console.
 
+### Đăng nhập bằng Google (tùy chọn)
+
+Trang đăng nhập và đăng ký hiện nút Google khi backend có `GOOGLE_CLIENT_ID` (để trống thì nút ẩn). Frontend đọc Client ID lúc chạy (`GET /api/public/auth/config`), nên bật/tắt chỉ cần `docker compose up -d app`, không phải build lại `web`.
+
+1. Vào [Google Cloud Console](https://console.cloud.google.com/), tạo project, mở **Google Auth Platform** (trước đây là *APIs & Services → OAuth consent screen*).
+2. **Branding**: tên shop, email hỗ trợ, **Authorized domains** thêm `<domain>`.
+3. **Audience**: chọn *External*, bấm **Publish app**. Nếu để *Testing*, chỉ tài khoản trong danh sách Test users đăng nhập được. Shop chỉ dùng phạm vi cơ bản (email, tên), nên không phải chờ Google xét duyệt.
+4. **Clients → Create client**: chọn loại *Web application*. Ở **Authorized JavaScript origins**, thêm `https://<domain>`, `https://www.<domain>`, và cho dev thêm `http://localhost:5173`, `http://localhost`. Không cần Redirect URI hay Client secret.
+5. Chép **Client ID** (dạng `....apps.googleusercontent.com`) vào `GOOGLE_CLIENT_ID` trong `.env`.
+
+Lưu ý:
+
+- Google không nhận origin là địa chỉ IP, và không nhận `http://` trừ localhost. Vì vậy nút chỉ chạy khi mở web bằng domain https.
+- Backend kiểm tra chữ ký ID token bằng khóa công khai tải từ `https://www.googleapis.com/oauth2/v3/certs`, nên máy chủ phải ra được Internet.
+- Nếu email Google trùng một tài khoản đã có, khách đăng nhập vào tài khoản đó (gắn thêm Google). Nếu là email mới, hệ thống tạo khách hàng chưa có mật khẩu. Khách tự tạo mật khẩu ở **Tài khoản → Hồ sơ & mật khẩu** hoặc qua "Quên mật khẩu". Chỉ nhận email mà Google đã xác minh.
+
 ## 4. Khác biệt so với đặc tả
 
 | Đặc tả | Thực hiện | Lý do |
@@ -126,8 +142,9 @@ docker compose up -d --build
 | Khách hủy đơn khi còn PENDING | Thêm điều kiện: **chưa thanh toán** | Đơn đã trả tiền phải liên hệ shop để hoàn tiền |
 | Rate limit `/api/auth/**` 10 lần/phút/IP | Giữ 10/phút cho đăng nhập, đăng ký, quên/đặt lại mật khẩu; `/api/auth/refresh` và `/logout` có hạn mức riêng 60/phút | SPA gọi refresh mỗi lần tải trang, gộp chung sẽ khiến khách dùng chung IP bị 429 |
 | `delivery_zones` | `express_fee = NULL` nghĩa là khu vực không hỗ trợ EXPRESS | Thay cho cờ "nội thành" |
+| Chỉ đăng nhập bằng email + mật khẩu | Thêm đăng nhập bằng Google (Google Identity Services, backend kiểm tra ID token). `users` thêm cột `google_id`; `password_hash` cho phép NULL (tài khoản tạo bằng Google chưa đặt mật khẩu) | Khách đăng nhập nhanh, không phải nhớ mật khẩu |
 
-API bổ sung ngoài đặc tả: `GET /api/public/banners` và `GET|POST|PUT|DELETE /api/admin/banners[/{id}]`, `POST /api/admin/banners/{id}/image` (banner trang chủ, chỉ ADMIN), tham số `onSale=true` cho `GET /api/public/products` (mục "Đang giảm giá"), `GET /api/orders/{code}/payment?phone=` (trạng thái thanh toán), `POST /api/public/payments/sepay/webhook`, `GET|POST /api/admin/payments/transactions[/{id}/assign|/resolve]` (đối soát), `POST /api/admin/orders/{code}/photo`, `PATCH /api/admin/images/{id}`, `PUT /api/me/password`, `POST /api/admin/users`, `PATCH /api/admin/users/{id}/role`.
+API bổ sung ngoài đặc tả: `GET /api/public/banners` và `GET|POST|PUT|DELETE /api/admin/banners[/{id}]`, `POST /api/admin/banners/{id}/image` (banner trang chủ, chỉ ADMIN), tham số `onSale=true` cho `GET /api/public/products` (mục "Đang giảm giá"), `GET /api/orders/{code}/payment?phone=` (trạng thái thanh toán), `POST /api/public/payments/sepay/webhook`, `GET|POST /api/admin/payments/transactions[/{id}/assign|/resolve]` (đối soát), `POST /api/admin/orders/{code}/photo`, `PATCH /api/admin/images/{id}`, `PUT /api/me/password` (tài khoản chưa có mật khẩu thì bỏ trống `currentPassword`), `POST /api/admin/users`, `PATCH /api/admin/users/{id}/role`, `POST /api/auth/google` (body `{credential}` là ID token của Google), `GET /api/public/auth/config`.
 
 ## 5. Câu hỏi cần chốt (còn mở từ đặc tả)
 

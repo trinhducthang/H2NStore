@@ -37,6 +37,11 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
+    public Optional<User> findByGoogleId(String googleId) {
+        return userRepository.findByGoogleId(googleId);
+    }
+
+    @Transactional(readOnly = true)
     public User getById(Long id) {
         return userRepository.findById(id).orElseThrow(() -> BusinessException.notFound("người dùng"));
     }
@@ -65,6 +70,17 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    /** Lần đầu đăng nhập bằng Google: tạo khách hàng chưa có mật khẩu. Người gọi đã kiểm tra email chưa tồn tại. */
+    @Transactional
+    public User createWithGoogle(String email, String fullName, String googleId) {
+        User user = new User();
+        user.setEmail(email.toLowerCase(Locale.ROOT));
+        user.setFullName(fullName);
+        user.setGoogleId(googleId);
+        user.setRole(Role.CUSTOMER);
+        return userRepository.save(user);
+    }
+
     @Transactional
     public void changePasswordUnchecked(User user, String rawPassword) {
         user.setPasswordHash(passwordEncoder.encode(rawPassword));
@@ -89,7 +105,9 @@ public class UserService {
     @Transactional
     public void changePassword(Long userId, ChangePasswordRequest req) {
         User user = getById(userId);
-        if (!passwordEncoder.matches(req.currentPassword(), user.getPasswordHash())) {
+        // Tài khoản tạo bằng Google chưa có mật khẩu: đặt mật khẩu đầu tiên, không hỏi mật khẩu hiện tại
+        if (user.getPasswordHash() != null && (req.currentPassword() == null
+                || !passwordEncoder.matches(req.currentPassword(), user.getPasswordHash()))) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Mật khẩu hiện tại không đúng");
         }
         user.setPasswordHash(passwordEncoder.encode(req.newPassword()));

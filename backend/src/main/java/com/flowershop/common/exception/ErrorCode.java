@@ -15,6 +15,9 @@ public enum ErrorCode {
     INVALID_VIDEO(HttpStatus.BAD_REQUEST, "Video không hợp lệ (chỉ nhận mp4/mov/webm, tối đa 30MB)"),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Chưa đăng nhập hoặc phiên đã hết hạn"),
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "Email hoặc mật khẩu không đúng"),
+    PASSWORD_NOT_SET(HttpStatus.UNAUTHORIZED, "Tài khoản này đăng ký bằng Google. Hãy bấm nút Google bên dưới"
+            + " hoặc dùng \"Quên mật khẩu\" để tạo mật khẩu"),
+    GOOGLE_LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "Đăng nhập bằng Google không thành công, vui lòng thử lại"),
     FORBIDDEN(HttpStatus.FORBIDDEN, "Bạn không có quyền thực hiện thao tác này"),
     ACCOUNT_DISABLED(HttpStatus.FORBIDDEN, "Tài khoản đã bị khóa"),
     NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy dữ liệu"),
@@ -30,7 +33,9 @@ public enum ErrorCode {
     TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "Bạn thao tác quá nhanh, vui lòng thử lại sau"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Có lỗi xảy ra, vui lòng thử lại sau"),
     GEOCODING_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE,
-            "Chưa lấy được địa chỉ từ vị trí, vui lòng thử lại hoặc nhập tay");
+            "Chưa lấy được địa chỉ từ vị trí, vui lòng thử lại hoặc nhập tay"),
+    GOOGLE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE,
+            "Chưa kết nối được Google, vui lòng thử lại sau hoặc đăng nhập bằng email");
 
     private final HttpStatus httpStatus;
     private final String defaultMessage;

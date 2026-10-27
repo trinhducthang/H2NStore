@@ -9,6 +9,7 @@ import com.flowershop.auth.entity.PasswordResetToken;
 import com.flowershop.auth.entity.RefreshToken;
 import com.flowershop.auth.repository.PasswordResetTokenRepository;
 import com.flowershop.auth.repository.RefreshTokenRepository;
+import com.flowershop.auth.service.GoogleTokenVerifier.GoogleUser;
 import com.flowershop.common.exception.BusinessException;
 import com.flowershop.common.exception.ErrorCode;
 import com.flowershop.common.util.TimeUtils;
@@ -37,6 +38,7 @@ import java.time.OffsetDateTime;
 public class AuthService {
 
     private final UserService userService;
+    private final GoogleTokenVerifier googleTokenVerifier;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordResetTokenRepository resetTokenRepository;
     private final PasswordEncoder passwordEncoder;
@@ -60,6 +62,9 @@ public class AuthService {
         if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(now)) {
             throw new BusinessException(ErrorCode.ACCOUNT_LOCKED);
         }
+        if (user.getPasswordHash() == null) {
+            throw new BusinessException(ErrorCode.PASSWORD_NOT_SET);
+        }
         if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {
             int failed = user.getFailedLoginCount() + 1;
             if (failed >= props.auth().maxFailedAttempts()) {
@@ -77,6 +82,37 @@ public class AuthService {
         user.setFailedLoginCount(0);
         user.setLockedUntil(null);
         return issueTokens(user);
+    }
+
+    /**
+     * Tìm tài khoản theo Google ID; chưa có thì theo email (gắn Google vào tài khoản sẵn có),
+     * vẫn chưa có thì tạo khách hàng mới chưa có mật khẩu. Chỉ tin email Google đã xác minh.
+     */
+    @Transactional
+    public AuthResult loginWithGoogle(String idToken) {
+        GoogleUser google = googleTokenVerifier.verify(idToken);
+        User user = userService.findByGoogleId(google.id()).orElse(null);
+        if (user == null) {
+            if (!google.emailVerified() || google.email() == null) {
+                throw new BusinessException(ErrorCode.GOOGLE_LOGIN_FAILED,
+                        "Email của tài khoản Google chưa được xác minh, vui lòng đăng nhập bằng email");
+            }
+            user = userService.findByEmail(google.email())
+                    .orElseGet(() -> userService.createWithGoogle(google.email(), googleFullName(google), google.id()));
+            user.setGoogleId(google.id());
+        }
+        if (!user.isEnabled()) {
+            throw new BusinessException(ErrorCode.ACCOUNT_DISABLED);
+        }
+        return issueTokens(user);
+    }
+
+    /** Tên trên Google; không có thì lấy phần trước @ của email */
+    private static String googleFullName(GoogleUser google) {
+        String name = google.name() == null || google.name().isBlank()
+                ? google.email().substring(0, google.email().indexOf('@'))
+                : google.name().strip();
+        return name.length() > 100 ? name.substring(0, 100) : name;
     }
 
     /** Rotation: cấp refresh token mới, thu hồi token cũ. Token đã thu hồi bị dùng lại -> thu hồi toàn bộ. */
