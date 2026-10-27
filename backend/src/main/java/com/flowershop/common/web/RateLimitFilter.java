@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Giới hạn request/phút/IP (Bucket4j, in-memory):
  * <ul>
  *   <li>POST /api/orders và /api/auth/** (đăng nhập, đăng ký, quên mật khẩu...): N lần/phút</li>
+ *   <li>/api/public/delivery/reverse-geocode (gọi sang Nominatim): N lần/phút</li>
  *   <li>/api/auth/refresh, /api/auth/logout: hạn mức riêng rộng hơn, vì SPA gọi refresh mỗi lần tải trang</li>
  * </ul>
  */
@@ -84,6 +85,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
         if ("/api/auth/refresh".equals(path) || "/api/auth/logout".equals(path)) {
             return "session";
+        }
+        if ("/api/public/delivery/reverse-geocode".equals(path)) {
+            return "geocode";
         }
         return path.startsWith("/api/auth/") ? "auth" : null;
     }

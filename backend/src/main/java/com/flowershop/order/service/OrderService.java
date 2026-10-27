@@ -15,6 +15,7 @@ import com.flowershop.delivery.entity.DeliveryZone;
 import com.flowershop.delivery.service.DeliveryService;
 import com.flowershop.order.dto.OrderDtos.BankTransferInfo;
 import com.flowershop.order.dto.OrderDtos.CreateOrderRequest;
+import com.flowershop.order.dto.OrderDtos.DeliveredItem;
 import com.flowershop.order.dto.OrderDtos.OrderCreatedResponse;
 import com.flowershop.order.dto.OrderDtos.OrderNotificationView;
 import com.flowershop.order.dto.OrderDtos.OrderResponse;
@@ -58,10 +59,15 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -465,13 +471,58 @@ public class OrderService {
                 o.getPaidAmount());
     }
 
-    /** Kiểm tra đơn của user có ở trạng thái DELIVERED và chứa sản phẩm không (dùng cho đánh giá). */
+    // =================================================================== dùng cho đánh giá
+
+    /** Sản phẩm trong đơn DELIVERED của user (rỗng nếu đơn không phải của user, chưa giao hoặc không có sản phẩm). */
     @Transactional(readOnly = true)
-    public Optional<Long> findDeliveredOrderIdContainingProduct(Long userId, String code, Long productId) {
-        return orderRepository.findByCodeAndUserId(code.toUpperCase(Locale.ROOT), userId)
+    public Optional<DeliveredItem> findDeliveredItem(Long userId, String code, Long productId) {
+        return orderRepository.findByCodeAndUserId(code.trim().toUpperCase(Locale.ROOT), userId)
                 .filter(o -> o.getStatus() == OrderStatus.DELIVERED)
-                .filter(o -> o.getItems().stream().anyMatch(i -> i.getProductId().equals(productId)))
-                .map(Order::getId);
+                .flatMap(o -> deliveredItems(o).stream().filter(i -> i.productId().equals(productId)).findFirst());
+    }
+
+    /**
+     * Sản phẩm trong các đơn DELIVERED của user, giao từ {@code since} trở đi, đơn mới trước.
+     * Có {@code code} thì chỉ xét đơn đó.
+     */
+    @Transactional(readOnly = true)
+    public List<DeliveredItem> deliveredItems(Long userId, OffsetDateTime since, String code) {
+        List<Order> orders = code != null && !code.isBlank()
+                ? orderRepository.findByCodeAndUserId(code.trim().toUpperCase(Locale.ROOT), userId)
+                        .filter(o -> o.getStatus() == OrderStatus.DELIVERED).stream().toList()
+                : orderRepository.findByUserIdAndStatusAndUpdatedAtGreaterThanEqualOrderByIdDesc(userId,
+                        OrderStatus.DELIVERED, since);
+        return orders.stream()
+                .flatMap(o -> deliveredItems(o).stream())
+                .filter(i -> !i.deliveredAt().isBefore(since))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Map<Long, String> findCodes(Collection<Long> orderIds) {
+        if (orderIds.isEmpty()) {
+            return Map.of();
+        }
+        return orderRepository.findAllById(orderIds).stream()
+                .collect(Collectors.toMap(Order::getId, Order::getCode));
+    }
+
+    /** Gộp theo sản phẩm (1 sản phẩm có thể mua nhiều phân loại trong cùng đơn). */
+    private static List<DeliveredItem> deliveredItems(Order order) {
+        OffsetDateTime deliveredAt = order.getHistory().stream()
+                .filter(h -> h.getToStatus() == OrderStatus.DELIVERED)
+                .map(OrderStatusHistory::getCreatedAt)
+                .max(Comparator.naturalOrder())
+                .orElse(order.getUpdatedAt());
+        Map<Long, List<OrderItem>> byProduct = order.getItems().stream()
+                .collect(Collectors.groupingBy(OrderItem::getProductId, LinkedHashMap::new, Collectors.toList()));
+        return byProduct.values().stream().map(items -> {
+            OrderItem first = items.getFirst();
+            String variants = items.stream().map(OrderItem::getVariantName).distinct()
+                    .collect(Collectors.joining(", "));
+            return new DeliveredItem(order.getId(), order.getCode(), first.getProductId(), first.getProductName(),
+                    variants, deliveredAt);
+        }).toList();
     }
 
     private static OrderResponse withSender(OrderResponse r, PartyResponse sender) {

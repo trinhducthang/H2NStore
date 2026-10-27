@@ -1,9 +1,11 @@
 package com.flowershop.delivery.controller;
 
+import com.flowershop.delivery.dto.DeliveryDtos.LocationResponse;
 import com.flowershop.delivery.dto.DeliveryDtos.SlotAvailability;
 import com.flowershop.delivery.dto.DeliveryDtos.ZoneRequest;
 import com.flowershop.delivery.dto.DeliveryDtos.ZoneResponse;
 import com.flowershop.delivery.service.DeliveryService;
+import com.flowershop.delivery.service.ReverseGeocoder;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,7 @@ import java.util.List;
 public class DeliveryController {
 
     private final DeliveryService deliveryService;
+    private final ReverseGeocoder reverseGeocoder;
 
     @GetMapping("/api/public/delivery/zones")
     public List<ZoneResponse> zones() {
@@ -39,6 +42,12 @@ public class DeliveryController {
     public List<SlotAvailability> slots(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
                                         @RequestParam(required = false) Long zoneId) {
         return deliveryService.availableSlots(date, zoneId);
+    }
+
+    /** Địa chỉ tại tọa độ GPS của khách (nút "Vị trí hiện tại" khi đặt hàng). */
+    @GetMapping("/api/public/delivery/reverse-geocode")
+    public LocationResponse reverseGeocode(@RequestParam double lat, @RequestParam double lng) {
+        return reverseGeocoder.reverse(lat, lng);
     }
 
     @GetMapping("/api/admin/delivery-zones")

@@ -7,24 +7,25 @@ import { ordersApi } from '../api/orders';
 import type { Address, DeliverySlot, PaymentMethod, PreviewOrderResponse } from '../api/types';
 import { EmptyState, ErrorBox, FieldError, Loading } from '../components/Feedback';
 import { ProductThumb } from '../components/ProductThumb';
+import { SHOP_ADDRESS, SHOP_HOTLINE, SHOP_NAME } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useAsync, useDebouncedValue } from '../hooks/useAsync';
 import { addDays, formatVnd, todayVN } from '../utils/format';
+import { locateCurrentAddress } from '../utils/geolocation';
 import { cleanPhone, EMAIL_REGEX, isValidPhone, PHONE_MESSAGE, uuid } from '../utils/validation';
 
 interface CheckoutForm {
-  senderName: string;
-  senderPhone: string;
-  senderEmail: string;
   receiverName: string;
   receiverPhone: string;
+  email: string;
   deliveryAddress: string;
+  /** Số nhà, ngõ/ngách, tòa nhà: vị trí GPS thường chỉ ra được đường, phường/xã */
+  addressDetail: string;
   deliveryZoneId: number | null;
   deliveryDate: string;
   deliverySlot: DeliverySlot | null;
   cardMessage: string;
-  hideSender: boolean;
   note: string;
   paymentMethod: PaymentMethod;
 }
@@ -33,14 +34,18 @@ type Errors = Record<string, string>;
 
 const MAX_DAYS_AHEAD = 30;
 
-/** Tên field trong form -> tên field lỗi backend trả về (VD "sender.phone") */
+/** Tên field trong form -> tên field lỗi backend trả về (VD "receiver.phone") */
 const ERROR_KEYS: Partial<Record<keyof CheckoutForm, string>> = {
-  senderName: 'sender.name',
-  senderPhone: 'sender.phone',
-  senderEmail: 'sender.email',
+  email: 'sender.email',
   receiverName: 'receiver.name',
   receiverPhone: 'receiver.phone',
+  addressDetail: 'deliveryAddress',
 };
+
+/** Địa chỉ gửi lên đơn: "Số 12, ngõ 34, Phố Lê Thái Tổ, Phường Hoàn Kiếm, Hà Nội" */
+function fullAddress(form: CheckoutForm): string {
+  return [form.addressDetail.trim(), form.deliveryAddress.trim()].filter(Boolean).join(', ');
+}
 
 function withoutKeys(errors: Errors, keys: string[]): Errors {
   if (!keys.some((k) => k in errors)) return errors;
@@ -51,18 +56,26 @@ function withoutKeys(errors: Errors, keys: string[]): Errors {
 
 function validate(form: CheckoutForm): Errors {
   const e: Errors = {};
-  if (!form.senderName.trim()) e['sender.name'] = 'Vui lòng nhập tên người gửi';
-  if (!isValidPhone(form.senderPhone)) e['sender.phone'] = PHONE_MESSAGE;
-  if (form.senderEmail.trim() && !EMAIL_REGEX.test(form.senderEmail.trim())) e['sender.email'] = 'Email không hợp lệ';
   if (!form.receiverName.trim()) e['receiver.name'] = 'Vui lòng nhập tên người nhận';
   if (!isValidPhone(form.receiverPhone)) e['receiver.phone'] = PHONE_MESSAGE;
+  if (form.email.trim() && !EMAIL_REGEX.test(form.email.trim())) e['sender.email'] = 'Email không hợp lệ';
   if (!form.deliveryAddress.trim()) e.deliveryAddress = 'Vui lòng nhập địa chỉ giao hàng';
+  else if (fullAddress(form).length > 500) e.deliveryAddress = 'Địa chỉ tối đa 500 ký tự';
   if (!form.deliveryZoneId) e.deliveryZoneId = 'Vui lòng chọn khu vực giao';
   if (!form.deliveryDate) e.deliveryDate = 'Vui lòng chọn ngày giao';
   if (!form.deliverySlot) e.deliverySlot = 'Vui lòng chọn khung giờ giao';
   if (form.cardMessage.length > 300) e.cardMessage = 'Lời nhắn tối đa 300 ký tự';
   if (form.note.length > 500) e.note = 'Ghi chú tối đa 500 ký tự';
   return e;
+}
+
+/**
+ * Người đặt hàng, lưu vào `sender` của đơn (nhận email xác nhận, tra cứu đơn bằng SĐT).
+ * Người gửi hàng luôn là shop: đã đăng nhập thì là chủ tài khoản, còn lại là chính người nhận.
+ */
+function buyerOf(form: CheckoutForm, user: ReturnType<typeof useAuth>['user']) {
+  if (user?.phone && isValidPhone(user.phone)) return { name: user.fullName, phone: user.phone };
+  return { name: form.receiverName, phone: form.receiverPhone };
 }
 
 export function CheckoutPage() {
@@ -72,17 +85,15 @@ export function CheckoutPage() {
   const today = todayVN();
 
   const [form, setForm] = useState<CheckoutForm>({
-    senderName: '',
-    senderPhone: '',
-    senderEmail: '',
     receiverName: '',
     receiverPhone: '',
+    email: '',
     deliveryAddress: '',
+    addressDetail: '',
     deliveryZoneId: null,
     deliveryDate: today,
     deliverySlot: null,
     cardMessage: '',
-    hideSender: false,
     note: '',
     paymentMethod: 'COD',
   });
@@ -95,6 +106,8 @@ export function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<number | ''>('');
+  const [locating, setLocating] = useState(false);
+  const [locateNote, setLocateNote] = useState<{ error: boolean; text: string } | null>(null);
 
   // Sửa field nào thì ẩn lỗi của field đó
   const set = <K extends keyof CheckoutForm>(key: K, value: CheckoutForm[K]) => {
@@ -125,35 +138,62 @@ export function CheckoutPage() {
     [user?.id],
   );
 
-  // Điền sẵn người gửi từ tài khoản
+  // Điền sẵn người nhận từ tài khoản (địa chỉ mặc định trong sổ, nếu có, sẽ ghi đè tên/SĐT ở dưới)
   useEffect(() => {
     if (!user) return;
     setForm((f) => ({
       ...f,
-      senderName: f.senderName || user.fullName,
-      senderPhone: f.senderPhone || user.phone || '',
-      senderEmail: f.senderEmail || user.email,
+      receiverName: f.receiverName || user.fullName,
+      receiverPhone: f.receiverPhone || user.phone || '',
+      email: f.email || user.email,
     }));
   }, [user]);
 
   const applyAddress = (a: Address) => {
     setSelectedAddressId(a.id);
+    setLocateNote(null);
     setForm((f) => ({
       ...f,
       receiverName: a.receiverName,
       receiverPhone: a.receiverPhone,
       deliveryAddress: formatAddress(a),
+      // Địa chỉ trong sổ đã có số nhà
+      addressDetail: '',
     }));
     setErrors((e) => withoutKeys(e, ['receiver.name', 'receiver.phone', 'deliveryAddress']));
   };
 
-  // Điền sẵn địa chỉ mặc định (một lần, và chỉ khi người dùng chưa tự nhập)
+  // Nút "Vị trí hiện tại": GPS của trình duyệt -> backend đổi thành địa chỉ.
+  // Bản đồ hiếm khi có số nhà (và GPS lệch vài chục mét) nên không đoán, chuyển sang ô số nhà cho khách tự nhập.
+  const detailInput = useRef<HTMLInputElement>(null);
+  const fillCurrentLocation = async () => {
+    setLocating(true);
+    setLocateNote(null);
+    try {
+      const { address, accuracy } = await locateCurrentAddress();
+      setSelectedAddressId('');
+      set('deliveryAddress', formatAddress(address));
+      setLocateNote({
+        error: false,
+        text:
+          'Đã điền theo vị trí hiện tại, vui lòng nhập số nhà, ngõ/ngách ở ô bên dưới.' +
+          (accuracy > 100 ? ` Vị trí có thể lệch khoảng ${Math.round(accuracy)}m, hãy kiểm tra lại.` : ''),
+      });
+      detailInput.current?.focus();
+    } catch (err) {
+      setLocateNote({ error: true, text: errorMessage(err) });
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  // Điền sẵn địa chỉ mặc định (một lần, và chỉ khi người dùng chưa tự nhập địa chỉ)
   const addressPrefilled = useRef(false);
   useEffect(() => {
     const list = addresses.data;
     if (!list || list.length === 0 || addressPrefilled.current) return;
     addressPrefilled.current = true;
-    if (form.receiverName || form.deliveryAddress) return;
+    if (form.deliveryAddress) return;
     applyAddress(list.find(isDefaultAddress) ?? list[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addresses.data]);
@@ -219,23 +259,24 @@ export function CheckoutPage() {
     }
     if (items.length === 0) return;
     const couponValid = appliedCoupon && preview && !preview.couponError ? appliedCoupon : null;
+    const buyer = buyerOf(form, user);
     setSubmitting(true);
     try {
       const res = await ordersApi.create(
         {
           items,
           sender: {
-            name: form.senderName.trim(),
-            phone: cleanPhone(form.senderPhone),
-            email: form.senderEmail.trim() || null,
+            name: buyer.name.trim(),
+            phone: cleanPhone(buyer.phone),
+            email: form.email.trim() || null,
           },
           receiver: { name: form.receiverName.trim(), phone: cleanPhone(form.receiverPhone) },
-          deliveryAddress: form.deliveryAddress.trim(),
+          deliveryAddress: fullAddress(form),
           deliveryZoneId: form.deliveryZoneId!,
           deliveryDate: form.deliveryDate,
           deliverySlot: form.deliverySlot!,
           cardMessage: form.cardMessage.trim() || null,
-          hideSender: form.hideSender,
+          hideSender: false,
           couponCode: couponValid,
           paymentMethod: form.paymentMethod,
           note: form.note.trim() || null,
@@ -243,7 +284,7 @@ export function CheckoutPage() {
         idempotencyKey.current,
       );
       idempotencyKey.current = uuid();
-      const phone = encodeURIComponent(cleanPhone(form.senderPhone));
+      const phone = encodeURIComponent(cleanPhone(buyer.phone));
       const target =
         res.paymentMethod === 'SEPAY' && res.paymentStatus === 'UNPAID'
           ? `/payment/${res.code}?phone=${phone}`
@@ -290,50 +331,19 @@ export function CheckoutPage() {
 
       <form className="checkout-layout" onSubmit={submit} noValidate>
         <div className="checkout-main">
-          {/* ---------------------------------------------------- người gửi */}
+          {/* ---------------------------------------------------- người gửi: luôn là shop */}
           <section className="card">
             <h2 className="card-title">1. Người gửi</h2>
-            <div className="form-grid">
-              <label className="field">
-                <span className="field-label">
-                  Họ tên <span className="required">*</span>
-                </span>
-                <input
-                  value={form.senderName}
-                  maxLength={100}
-                  autoComplete="name"
-                  onChange={(e) => set('senderName', e.target.value)}
-                />
-                <FieldError message={errors['sender.name']} />
-              </label>
-              <label className="field">
-                <span className="field-label">
-                  Số điện thoại <span className="required">*</span>
-                </span>
-                <input
-                  type="tel"
-                  value={form.senderPhone}
-                  autoComplete="tel"
-                  placeholder="0912345678"
-                  onChange={(e) => set('senderPhone', e.target.value)}
-                />
-                <FieldError message={errors['sender.phone']} />
-              </label>
-              <label className="field field-full">
-                <span className="field-label">Email (nhận xác nhận đơn)</span>
-                <input
-                  type="email"
-                  value={form.senderEmail}
-                  autoComplete="email"
-                  onChange={(e) => set('senderEmail', e.target.value)}
-                />
-                <FieldError message={errors['sender.email']} />
-              </label>
-            </div>
-            <label className="check">
-              <input type="checkbox" checked={form.hideSender} onChange={(e) => set('hideSender', e.target.checked)} />
-              <span>Giấu tên người gửi với người nhận</span>
-            </label>
+            <dl className="info-list">
+              <dt>Cửa hàng</dt>
+              <dd>
+                <strong>{SHOP_NAME}</strong>
+              </dd>
+              <dt>Hotline</dt>
+              <dd>{SHOP_HOTLINE}</dd>
+              <dt>Địa chỉ</dt>
+              <dd>{SHOP_ADDRESS}</dd>
+            </dl>
           </section>
 
           {/* ---------------------------------------------------- người nhận */}
@@ -367,6 +377,7 @@ export function CheckoutPage() {
                 <input
                   value={form.receiverName}
                   maxLength={100}
+                  autoComplete="name"
                   onChange={(e) => set('receiverName', e.target.value)}
                 />
                 <FieldError message={errors['receiver.name']} />
@@ -378,21 +389,52 @@ export function CheckoutPage() {
                 <input
                   type="tel"
                   value={form.receiverPhone}
+                  autoComplete="tel"
+                  placeholder="0912345678"
                   onChange={(e) => set('receiverPhone', e.target.value)}
                 />
                 <FieldError message={errors['receiver.phone']} />
               </label>
               <label className="field field-full">
-                <span className="field-label">
-                  Địa chỉ giao <span className="required">*</span>
-                </span>
+                <span className="field-label">Email (nhận xác nhận đơn)</span>
                 <input
-                  value={form.deliveryAddress}
-                  maxLength={500}
-                  placeholder="Số nhà, đường, phường/xã, quận/huyện"
-                  onChange={(e) => set('deliveryAddress', e.target.value)}
+                  type="email"
+                  value={form.email}
+                  autoComplete="email"
+                  onChange={(e) => set('email', e.target.value)}
                 />
+                <FieldError message={errors['sender.email']} />
+              </label>
+              <div className="field field-full">
+                <label className="field-label" htmlFor="delivery-address">
+                  Địa chỉ giao <span className="required">*</span>
+                </label>
+                <div className="input-group">
+                  <input
+                    id="delivery-address"
+                    value={form.deliveryAddress}
+                    maxLength={500}
+                    placeholder="Đường/phố, phường/xã, tỉnh/thành"
+                    onChange={(e) => set('deliveryAddress', e.target.value)}
+                  />
+                  <button type="button" className="btn btn-outline" disabled={locating} onClick={fillCurrentLocation}>
+                    {locating ? 'Đang lấy vị trí...' : '📍 Vị trí hiện tại'}
+                  </button>
+                </div>
+                {locateNote && (
+                  <p className={locateNote.error ? 'field-error' : 'muted small'}>{locateNote.text}</p>
+                )}
                 <FieldError message={errors.deliveryAddress} />
+              </div>
+              <label className="field field-full">
+                <span className="field-label">Số nhà, ngõ/ngách, tòa nhà</span>
+                <input
+                  ref={detailInput}
+                  value={form.addressDetail}
+                  maxLength={100}
+                  placeholder="VD: Số 12, ngõ 34, tầng 3"
+                  onChange={(e) => set('addressDetail', e.target.value)}
+                />
               </label>
             </div>
 

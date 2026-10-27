@@ -131,7 +131,7 @@ export function AdminOrdersPage() {
                   <th>Mã đơn</th>
                   <th>Giao</th>
                   <th>Người nhận</th>
-                  <th>Người gửi</th>
+                  <th>Người đặt</th>
                   <th>Sản phẩm</th>
                   <th className="num">Tổng</th>
                   <th>Trạng thái</th>

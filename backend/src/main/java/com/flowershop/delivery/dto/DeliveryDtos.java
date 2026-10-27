@@ -32,4 +32,9 @@ public final class DeliveryDtos {
     public record SlotAvailability(DeliverySlot slot, String label, Integer startHour, Integer endHour,
                                    boolean available, long remaining, String reason) {
     }
+
+    /** Địa chỉ tại một tọa độ, cùng dạng với sổ địa chỉ; district chỉ có ở vùng bản đồ chưa theo ĐVHC mới. */
+    public record LocationResponse(double lat, double lng, String addressLine, String ward, String district,
+                                   String city) {
+    }
 }

@@ -55,12 +55,18 @@ class BannerFlowTest {
         ResponseEntity<Map<String, Object>> protocolRelative = rest.exchange("/api/admin/banners", HttpMethod.POST,
                 json(Map.of("linkUrl", "//evil.example.com"), admin), MAP);
         assertThat(protocolRelative.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        ResponseEntity<Map<String, Object>> badPosition = rest.exchange("/api/admin/banners", HttpMethod.POST,
+                json(Map.of("imagePositionX", 101), admin), MAP);
+        assertThat(badPosition.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 
         ResponseEntity<Map<String, Object>> created = rest.exchange("/api/admin/banners", HttpMethod.POST,
                 json(Map.of("title", "Chúc mừng 20/10", "buttonText", "Đặt hoa ngay",
-                        "linkUrl", "/products?categorySlug=hoa-tinh-yeu", "sortOrder", 1), admin), MAP);
+                        "linkUrl", "/products?categorySlug=hoa-tinh-yeu", "sortOrder", 1, "imagePositionY", 20),
+                        admin), MAP);
         assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        assertThat(created.getBody()).containsEntry("displayStatus", "NO_IMAGE");
+        assertThat(created.getBody()).containsEntry("displayStatus", "NO_IMAGE")
+                .containsEntry("imagePositionX", 50)
+                .containsEntry("imagePositionY", 20);
         long id = ((Number) created.getBody().get("id")).longValue();
         assertThat(publicIds()).doesNotContain(id);
 
@@ -69,6 +75,9 @@ class BannerFlowTest {
         assertThat(withImage.getBody()).containsEntry("displayStatus", "SHOWING");
         assertThat((String) withImage.getBody().get("imageUrl")).startsWith("/uploads/banners/");
         assertThat(publicIds()).contains(id);
+        assertThat(rest.exchange("/api/public/banners", HttpMethod.GET, null, LIST).getBody())
+                .filteredOn(b -> ((Number) b.get("id")).longValue() == id)
+                .singleElement().satisfies(b -> assertThat(b).containsEntry("imagePositionY", 20));
 
         // Hẹn giờ ngày mai mới hiện
         ResponseEntity<Map<String, Object>> scheduled = rest.exchange("/api/admin/banners/" + id, HttpMethod.PUT,

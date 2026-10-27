@@ -2,6 +2,7 @@ package com.flowershop.order.repository;
 
 import com.flowershop.delivery.entity.DeliverySlot;
 import com.flowershop.order.entity.Order;
+import com.flowershop.order.entity.OrderStatus;
 import com.flowershop.order.entity.PaymentMethod;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
@@ -34,6 +35,11 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     Optional<Order> findByCodeAndUserId(String code, Long userId);
 
     Page<Order> findByUserId(Long userId, Pageable pageable);
+
+    /** updatedAt luôn >= thời điểm giao, nên lọc theo updatedAt để bỏ bớt đơn giao quá lâu (dùng cho đánh giá) */
+    List<Order> findByUserIdAndStatusAndUpdatedAtGreaterThanEqualOrderByIdDesc(Long userId,
+                                                                               OrderStatus status,
+                                                                               OffsetDateTime since);
 
     @Query("""
             SELECT count(o) FROM Order o

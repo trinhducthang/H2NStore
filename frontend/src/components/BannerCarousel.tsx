@@ -34,6 +34,7 @@ function Slide({ banner, index, current, hidden }: { banner: PublicBanner; index
       alt={title || `Banner ${index + 1}`}
       loading={index === 0 ? 'eager' : 'lazy'}
       draggable={false}
+      style={{ objectPosition: `${banner.imagePositionX}% ${banner.imagePositionY}%` }}
     />
   );
   // Có nút CTA thì chỉ nút là link (tránh link lồng link); không có nút thì cả banner là link

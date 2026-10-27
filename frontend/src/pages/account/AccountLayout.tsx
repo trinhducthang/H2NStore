@@ -11,6 +11,7 @@ export function AccountLayout() {
       </div>
       <nav className="tabs" aria-label="Tài khoản">
         <NavLink to="/account/orders">Đơn hàng của tôi</NavLink>
+        <NavLink to="/account/reviews">Đánh giá</NavLink>
         <NavLink to="/account/profile">Hồ sơ & mật khẩu</NavLink>
         <NavLink to="/account/addresses">Sổ địa chỉ</NavLink>
       </nav>

@@ -2853,6 +2853,401 @@ input[type='radio'] {
   margin-bottom: 4px;
 }
 
+.review-card p {
+  margin: 4px 0;
+}
+
+.review-variant {
+  margin-top: 0;
+}
+
+/* ảnh/video đính kèm đánh giá */
+.review-media,
+.review-upload-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+}
+
+.review-media-item,
+.review-upload-tile {
+  position: relative;
+}
+
+.review-media-thumb,
+.review-upload-tile {
+  display: block;
+  width: 76px;
+  height: 76px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--rose-50);
+}
+
+.review-media-thumb {
+  cursor: zoom-in;
+}
+
+.review-upload-tile {
+  overflow: visible;
+}
+
+.review-media-thumb img,
+.review-media-thumb video,
+.review-upload-tile img,
+.review-upload-tile video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.review-media-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: rgba(40, 20, 28, 0.25);
+  color: #fff;
+  font-size: 1.3rem;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+.review-media-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.review-media-remove:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.review-reply {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--rose-200);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--rose-50);
+}
+
+.review-reply p {
+  margin: 4px 0 0;
+}
+
+/* xem ảnh/video lớn */
+.media-viewer {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 240px;
+  border-radius: var(--radius-sm);
+  background: #1d1216;
+  outline: none;
+}
+
+.media-viewer img,
+.media-viewer video {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+}
+
+.media-viewer-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ink);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.media-viewer-nav.prev {
+  left: 8px;
+}
+
+.media-viewer-nav.next {
+  right: 8px;
+}
+
+/* tổng quan sao trên trang sản phẩm */
+.rating-overview {
+  display: grid;
+  gap: 16px;
+  padding: 14px;
+  margin-bottom: 14px;
+  border-radius: var(--radius-sm);
+  background: var(--rose-50);
+}
+
+.rating-score {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.rating-score p {
+  margin: 0;
+}
+
+.rating-score strong {
+  font-size: 2.2rem;
+  line-height: 1;
+  color: var(--rose-700);
+}
+
+.rating-bars {
+  display: grid;
+  gap: 4px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.rating-bars button {
+  display: grid;
+  grid-template-columns: 36px 1fr 32px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rating-bars button:disabled {
+  cursor: default;
+}
+
+.rating-bar-label {
+  white-space: nowrap;
+}
+
+.rating-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.rating-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #f0a400;
+}
+
+.rating-bar-count {
+  text-align: right;
+}
+
+.review-filters {
+  margin-bottom: 6px;
+}
+
+/* form gửi/sửa đánh giá */
+.review-target {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.review-target p {
+  margin: 2px 0 0;
+}
+
+.review-target-thumb {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  min-height: 0;
+  border-radius: var(--radius-sm);
+}
+
+.review-rating-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.review-rating-label {
+  font-weight: 600;
+  color: #9a6a00;
+}
+
+.review-counter {
+  display: block;
+  text-align: right;
+}
+
+.review-upload-add {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 2px;
+  width: 76px;
+  height: 76px;
+  padding: 0;
+  border: 1px dashed var(--rose-600);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--rose-700);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.review-upload-add:hover:not(:disabled) {
+  background: var(--rose-50);
+}
+
+.review-upload-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.review-upload-add > span:first-child {
+  font-size: 1.2rem;
+}
+
+.upload-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.upload-progress span {
+  display: block;
+  height: 100%;
+  background: var(--rose-600);
+  transition: width 0.2s;
+}
+
+/* Tài khoản > Đánh giá, chi tiết đơn */
+.review-tabs {
+  margin-bottom: 14px;
+}
+
+.my-review-list.card {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.my-review-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.my-review-row:last-child {
+  border-bottom: 0;
+}
+
+.my-review-row > .btn {
+  flex: none;
+}
+
+.my-review-thumb {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  min-height: 0;
+  border-radius: var(--radius-sm);
+}
+
+.my-review-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.my-review-main > p {
+  margin: 2px 0;
+}
+
+.my-review-name {
+  font-weight: 600;
+}
+
+.my-review-main .review-card {
+  margin-top: 8px;
+}
+
+/* quản trị đánh giá */
+.review-admin-product {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.review-admin-product p {
+  margin: 2px 0 0;
+}
+
+.review-admin .row-actions {
+  margin-top: 12px;
+}
+
+.filter-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.filter-inline .check {
+  margin: 0;
+}
+
+@media (min-width: 640px) {
+  .rating-overview {
+    grid-template-columns: 180px 1fr;
+    align-items: center;
+  }
+}
+
 /* ---------------------------------------------------------------- giỏ hàng */
 
 .cart-layout {
@@ -3599,28 +3994,6 @@ input[type='radio'] {
   margin: 6px 0;
 }
 
-.review-forms {
-  display: grid;
-  gap: 12px;
-}
-
-.review-form {
-  display: grid;
-  gap: 8px;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-}
-
-.review-form.done {
-  background: var(--leaf-100);
-  border-color: transparent;
-}
-
-.review-form .btn {
-  justify-self: start;
-}
-
 .address-list {
   display: grid;
   gap: 12px;
@@ -3810,6 +4183,81 @@ input[type='radio'] {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* Ô nhập có danh sách gợi ý (phường/xã trong form địa chỉ) */
+.suggest {
+  position: relative;
+}
+
+.suggest-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  z-index: 20;
+  max-height: 240px;
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: 0 6px 20px rgba(80, 20, 40, 0.14);
+}
+
+.suggest-list li {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.suggest-list li.active {
+  background: var(--rose-50);
+  color: var(--rose-600);
+}
+
+/* Khung điện thoại 2:1 cạnh hướng dẫn, kéo chung vị trí với khung 3:1 */
+.banner-position-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.banner-preview-mobile {
+  flex: 0 0 180px;
+  aspect-ratio: 2 / 1;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--rose-50);
+}
+
+.banner-preview-mobile img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.banner-position-help {
+  display: grid;
+  flex: 1 1 220px;
+  gap: 6px;
+  justify-items: start;
+}
+
+/* Kéo ảnh xem trước để chọn phần hiển thị */
+.banner-positioner {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.banner-positioner.is-dragging {
+  cursor: grabbing;
 }
 
 .image-tile {

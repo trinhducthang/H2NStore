@@ -46,7 +46,7 @@ export function TrackOrderPage() {
     <div className="container section">
       <div className="page-head">
         <h1>Tra cứu đơn hàng</h1>
-        <p className="muted">Nhập mã đơn (VD: FS2610230001) và số điện thoại người gửi hoặc người nhận.</p>
+        <p className="muted">Nhập mã đơn (VD: FS2610230001) và số điện thoại đặt hàng hoặc người nhận.</p>
       </div>
 
       <form className="card track-form" onSubmit={submit}>

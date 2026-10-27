@@ -25,7 +25,7 @@ function PhoneForm({ onSubmit }: { onSubmit: (phone: string) => void }) {
   };
   return (
     <form className="card narrow form" onSubmit={submit}>
-      <h2 className="card-title">Nhập số điện thoại người gửi</h2>
+      <h2 className="card-title">Nhập số điện thoại đặt hàng</h2>
       <p className="muted">Để xem thông tin thanh toán, vui lòng nhập số điện thoại đã dùng khi đặt hàng.</p>
       <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0912345678" />
       <button type="submit" className="btn btn-primary">
@@ -134,7 +134,7 @@ export function PaymentPage() {
     return (
       <div className="container section">
         <EmptyState icon="🔎" title="Không tìm thấy đơn hàng" action={{ to: '/track', label: 'Tra cứu đơn' }}>
-          Kiểm tra lại mã đơn và số điện thoại người gửi.
+          Kiểm tra lại mã đơn và số điện thoại đặt hàng hoặc người nhận.
         </EmptyState>
       </div>
     );

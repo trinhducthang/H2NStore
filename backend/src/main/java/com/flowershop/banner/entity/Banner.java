@@ -32,6 +32,13 @@ public class Banner extends BaseEntity {
     @Column(name = "storage_key")
     private String storageKey;
 
+    /** Phần ảnh hiển thị khi khung cắt bớt ảnh (object-position, 0 - 100%); 50/50 = giữa ảnh */
+    @Column(name = "image_position_x", nullable = false)
+    private int imagePositionX = 50;
+
+    @Column(name = "image_position_y", nullable = false)
+    private int imagePositionY = 50;
+
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
 

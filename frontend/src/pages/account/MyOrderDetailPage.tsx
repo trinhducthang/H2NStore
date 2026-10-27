@@ -1,64 +1,97 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { accountApi } from '../../api/account';
-import { ApiError, errorMessage } from '../../api/client';
 import { ordersApi } from '../../api/orders';
-import type { Order, OrderLine } from '../../api/types';
+import type { Order, PendingReview, Review } from '../../api/types';
 import { EmptyState, ErrorBox, Loading } from '../../components/Feedback';
 import { PromptModal } from '../../components/Modal';
+import { MyReviewRow, PendingReviewRow } from '../../components/MyReviewRows';
 import { OrderDetailView } from '../../components/OrderDetailView';
-import { StarPicker } from '../../components/Stars';
+import { ReviewFormModal } from '../../components/ReviewFormModal';
 import { useToast } from '../../context/ToastContext';
 import { useAsync } from '../../hooks/useAsync';
 
-function ReviewForm({ orderCode, item }: { orderCode: string; item: OrderLine }) {
-  const [rating, setRating] = useState(5);
-  const [content, setContent] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+/** Mỗi sản phẩm trong đơn đã giao: chờ đánh giá / đã đánh giá (sửa được 1 lần) / hết hạn. */
+function OrderReviews({ order }: { order: Order }) {
+  const toast = useToast();
+  const pending = useAsync(() => accountApi.pendingReviews(order.code), [order.code]);
+  const mine = useAsync(() => accountApi.myReviews({ orderCode: order.code, size: 50 }), [order.code]);
+  const [writing, setWriting] = useState<PendingReview | null>(null);
+  const [editing, setEditing] = useState<Review | null>(null);
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      await accountApi.createReview({ orderCode, productId: item.productId, rating, content: content.trim() || null });
-      setResult({ ok: true, message: 'Cảm ơn bạn! Đánh giá sẽ hiển thị sau khi shop duyệt.' });
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
-        setResult({ ok: true, message: 'Bạn đã đánh giá sản phẩm này trong đơn hàng.' });
-      } else {
-        setResult({ ok: false, message: errorMessage(err) });
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (result?.ok) {
+  if ((pending.loading && !pending.data) || (mine.loading && !mine.data)) return <Loading />;
+  const error = pending.error ?? mine.error;
+  if (error) {
     return (
-      <div className="review-form done">
-        <strong>{item.productName}</strong>
-        <p className="muted small">{result.message}</p>
-      </div>
+      <ErrorBox
+        message={error}
+        onRetry={() => {
+          pending.reload();
+          mine.reload();
+        }}
+      />
     );
   }
+  const products = order.items.filter((item, idx, arr) => arr.findIndex((x) => x.productId === item.productId) === idx);
 
   return (
-    <form className="review-form" onSubmit={submit}>
-      <strong>{item.productName}</strong>
-      <StarPicker value={rating} onChange={setRating} />
-      <textarea
-        rows={2}
-        maxLength={2000}
-        value={content}
-        placeholder="Sản phẩm có đúng mô tả không? Giao có đúng giờ không?"
-        onChange={(e) => setContent(e.target.value)}
-      />
-      {result && !result.ok && <p className="field-error">{result.message}</p>}
-      <button type="submit" className="btn btn-primary btn-sm" disabled={busy}>
-        {busy ? 'Đang gửi...' : 'Gửi đánh giá'}
-      </button>
-    </form>
+    <>
+      <div className="my-review-list">
+        {products.map((item) => {
+          const review = mine.data?.content.find((r) => r.productId === item.productId);
+          const todo = pending.data?.find((p) => p.productId === item.productId);
+          if (review) {
+            return <MyReviewRow key={item.productId} review={review} showOrder={false} onEdit={() => setEditing(review)} />;
+          }
+          if (todo) {
+            return (
+              <PendingReviewRow key={item.productId} item={todo} showOrder={false} onReview={() => setWriting(todo)} />
+            );
+          }
+          return (
+            <div key={item.productId} className="my-review-row">
+              <div className="my-review-main">
+                <strong className="my-review-name">{item.productName}</strong>
+                <p className="muted small">Đã hết hạn đánh giá</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {writing && (
+        <ReviewFormModal
+          target={writing}
+          onClose={() => setWriting(null)}
+          onSaved={() => {
+            setWriting(null);
+            pending.reload();
+            mine.reload();
+            toast.success('Cảm ơn bạn! Đánh giá sẽ hiển thị sau khi shop duyệt.');
+          }}
+        />
+      )}
+      {editing && (
+        <ReviewFormModal
+          target={{
+            orderCode: order.code,
+            productId: editing.productId,
+            productName: editing.productName ?? '',
+            thumbnailUrl: editing.productThumbnail,
+            variantName: editing.variantName,
+          }}
+          review={editing}
+          onClose={() => setEditing(null)}
+          onSaved={(saved) => {
+            if (mine.data) {
+              mine.setData({ ...mine.data, content: mine.data.content.map((r) => (r.id === saved.id ? saved : r)) });
+            }
+            setEditing(null);
+            toast.success('Đã lưu. Đánh giá sẽ hiển thị lại sau khi shop duyệt.');
+          }}
+        />
+      )}
+    </>
   );
 }
 
@@ -76,9 +109,6 @@ export function MyOrderDetailPage() {
 
   const o: Order = order.data;
   const canPay = o.paymentMethod === 'SEPAY' && o.paymentStatus === 'UNPAID' && o.status === 'PENDING';
-  const reviewItems = o.status === 'DELIVERED'
-    ? o.items.filter((item, idx, arr) => arr.findIndex((x) => x.productId === item.productId) === idx)
-    : [];
 
   return (
     <>
@@ -110,14 +140,10 @@ export function MyOrderDetailPage() {
         }
       />
 
-      {reviewItems.length > 0 && (
+      {o.status === 'DELIVERED' && (
         <section className="card">
           <h3 className="card-title">Đánh giá sản phẩm</h3>
-          <div className="review-forms">
-            {reviewItems.map((item) => (
-              <ReviewForm key={item.productId} orderCode={o.code} item={item} />
-            ))}
-          </div>
+          <OrderReviews order={o} />
         </section>
       )}
 

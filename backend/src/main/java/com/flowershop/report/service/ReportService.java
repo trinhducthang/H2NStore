@@ -139,7 +139,7 @@ public class ReportService {
 
             Sheet list = wb.createSheet("Đơn hàng");
             headerRow(list, header, "Mã đơn", "Ngày đặt", "Trạng thái", "Thanh toán", "TT thanh toán",
-                    "Người gửi", "SĐT gửi", "Người nhận", "Ngày giao", "Khung giờ", "Tạm tính", "Phí ship",
+                    "Người đặt", "SĐT người đặt", "Người nhận", "Ngày giao", "Khung giờ", "Tạm tính", "Phí ship",
                     "Giảm giá", "Tổng");
             i = 1;
             for (OrderRow o : orders) {

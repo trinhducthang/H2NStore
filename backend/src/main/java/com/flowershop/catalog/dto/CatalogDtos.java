@@ -36,6 +36,10 @@ public final class CatalogDtos {
                                  String thumbnailUrl, Long price, Long compareAtPrice) {
     }
 
+    /** Thông tin gọn để hiển thị kèm đánh giá; slug null nếu sản phẩm đã ẩn/xóa (không mở trang được). */
+    public record ProductRef(Long id, String name, String slug, String thumbnailUrl) {
+    }
+
     public record VariantResponse(Long id, String name, String sku, long price, Long salePrice,
                                   long effectivePrice, int stock, boolean active) {
     }

@@ -8,41 +8,133 @@ import { Pagination } from '../components/Pagination';
 import { ProductGrid } from '../components/ProductCard';
 import { ProductThumb } from '../components/ProductThumb';
 import { QuantityInput } from '../components/QuantityInput';
+import { ReviewCard } from '../components/ReviewCard';
 import { Stars } from '../components/Stars';
 import { MAX_QUANTITY } from '../config';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { useAsync } from '../hooks/useAsync';
-import { formatDate, formatVnd } from '../utils/format';
+import { formatVnd } from '../utils/format';
 import { addRecentlyViewed } from '../utils/recentlyViewed';
 
 function defaultVariant(product: ProductDetail): Variant | undefined {
   return product.variants.find((v) => v.stock > 0) ?? product.variants[0];
 }
 
+const REVIEW_PAGE_SIZE = 5;
+const STAR_LEVELS = [5, 4, 3, 2, 1];
+
+interface ReviewFilter {
+  rating: number | null;
+  withMedia: boolean;
+}
+
 function Reviews({ slug }: { slug: string }) {
+  const [filter, setFilter] = useState<ReviewFilter>({ rating: null, withMedia: false });
   const [page, setPage] = useState(0);
-  const reviews = useAsync(() => catalogApi.reviews(slug, page, 5), [slug, page]);
-  if (reviews.loading && !reviews.data) return <Loading />;
-  if (reviews.error) return <ErrorBox message={reviews.error} onRetry={reviews.reload} />;
-  if (!reviews.data || reviews.data.content.length === 0) {
-    return <p className="muted">Chưa có đánh giá nào cho sản phẩm này.</p>;
+  const summary = useAsync(() => catalogApi.reviewSummary(slug), [slug]);
+  const reviews = useAsync(
+    () => catalogApi.reviews(slug, { ...filter, page, size: REVIEW_PAGE_SIZE }),
+    [slug, page, filter.rating, filter.withMedia],
+  );
+
+  const choose = (next: ReviewFilter) => {
+    setFilter(next);
+    setPage(0);
+  };
+  const isActive = (f: ReviewFilter) => filter.rating === f.rating && filter.withMedia === f.withMedia;
+
+  if (summary.loading && !summary.data) return <Loading />;
+  if (summary.error) return <ErrorBox message={summary.error} onRetry={summary.reload} />;
+  const s = summary.data;
+  if (!s || s.count === 0) {
+    return (
+      <p className="muted">
+        Chưa có đánh giá nào cho sản phẩm này. Khách đã mua và nhận hàng có thể đánh giá trong mục Tài khoản › Đánh giá.
+      </p>
+    );
   }
+
   return (
     <>
-      <ul className="review-list">
-        {reviews.data.content.map((r) => (
-          <li key={r.id} className="review">
-            <div className="review-head">
-              <strong>{r.authorName}</strong>
-              <Stars value={r.rating} size="sm" />
-              <span className="muted small">{formatDate(r.createdAt)}</span>
-            </div>
-            {r.content && <p className="pre-line">{r.content}</p>}
-          </li>
+      <div className="rating-overview">
+        <div className="rating-score">
+          <p>
+            <strong>{s.average?.toFixed(1)}</strong>
+            <span className="muted">/5</span>
+          </p>
+          <Stars value={s.average ?? 0} />
+          <span className="muted small">{s.count} đánh giá từ khách đã mua</span>
+        </div>
+        <ul className="rating-bars">
+          {STAR_LEVELS.map((star) => {
+            const n = s.distribution[star] ?? 0;
+            return (
+              <li key={star}>
+                <button
+                  type="button"
+                  disabled={n === 0}
+                  aria-label={`Xem ${n} đánh giá ${star} sao`}
+                  onClick={() => choose({ rating: star, withMedia: false })}
+                >
+                  <span className="rating-bar-label">{star} ★</span>
+                  <span className="rating-bar">
+                    <span style={{ width: `${(n / s.count) * 100}%` }} />
+                  </span>
+                  <span className="muted small rating-bar-count">{n}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
+      <div className="chip-row review-filters">
+        <button
+          type="button"
+          className={`chip chip-sm ${isActive({ rating: null, withMedia: false }) ? 'chip-active' : ''}`}
+          onClick={() => choose({ rating: null, withMedia: false })}
+        >
+          Tất cả ({s.count})
+        </button>
+        {s.withMedia > 0 && (
+          <button
+            type="button"
+            className={`chip chip-sm ${isActive({ rating: null, withMedia: true }) ? 'chip-active' : ''}`}
+            onClick={() => choose({ rating: null, withMedia: true })}
+          >
+            Có ảnh/video ({s.withMedia})
+          </button>
+        )}
+        {STAR_LEVELS.filter((star) => (s.distribution[star] ?? 0) > 0).map((star) => (
+          <button
+            key={star}
+            type="button"
+            className={`chip chip-sm ${isActive({ rating: star, withMedia: false }) ? 'chip-active' : ''}`}
+            onClick={() => choose({ rating: star, withMedia: false })}
+          >
+            {star} sao ({s.distribution[star]})
+          </button>
         ))}
-      </ul>
-      <Pagination page={reviews.data.page} totalPages={reviews.data.totalPages} onChange={setPage} />
+      </div>
+
+      {reviews.loading && !reviews.data && <Loading />}
+      {reviews.error && <ErrorBox message={reviews.error} onRetry={reviews.reload} />}
+      {reviews.data && reviews.data.content.length === 0 && (
+        <p className="muted">Không có đánh giá phù hợp bộ lọc.</p>
+      )}
+      {reviews.data && reviews.data.content.length > 0 && (
+        <>
+          <ul className={`review-list ${reviews.loading ? 'is-refreshing' : ''}`}>
+            {reviews.data.content.map((r) => (
+              <li key={r.id} className="review">
+                <ReviewCard review={r} />
+              </li>
+            ))}
+          </ul>
+          <Pagination page={reviews.data.page} totalPages={reviews.data.totalPages} onChange={setPage} />
+        </>
+      )}
     </>
   );
 }

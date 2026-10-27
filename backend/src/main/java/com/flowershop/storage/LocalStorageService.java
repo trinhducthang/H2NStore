@@ -31,7 +31,15 @@ public class LocalStorageService implements StorageService {
 
     @Override
     public StoredFile storeImage(MultipartFile file, String folder) {
-        String ext = ImageValidator.detectExtension(file);
+        return store(file, folder, ImageValidator.detectExtension(file));
+    }
+
+    @Override
+    public StoredFile storeVideo(MultipartFile file, String folder) {
+        return store(file, folder, VideoValidator.detectExtension(file));
+    }
+
+    private StoredFile store(MultipartFile file, String folder, String ext) {
         LocalDate today = LocalDate.now();
         String key = "%s/%d/%02d/%s.%s".formatted(folder, today.getYear(), today.getMonthValue(),
                 UUID.randomUUID(), ext);

@@ -1,6 +1,7 @@
 package com.flowershop.catalog.service;
 
 import com.flowershop.catalog.dto.CatalogDtos.ProductDetail;
+import com.flowershop.catalog.dto.CatalogDtos.ProductRef;
 import com.flowershop.catalog.dto.CatalogDtos.ProductSummary;
 import com.flowershop.catalog.entity.Category;
 import com.flowershop.catalog.entity.Product;
@@ -17,8 +18,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -73,6 +77,18 @@ public class ProductQueryService {
                 .filter(p -> p.getStatus() != ProductStatus.HIDDEN)
                 .map(Product::getId)
                 .orElseThrow(() -> BusinessException.notFound("sản phẩm"));
+    }
+
+    /** Tra nhanh tên, slug, ảnh đại diện theo id (gồm cả sản phẩm đã ẩn/xóa). */
+    @Transactional(readOnly = true)
+    public Map<Long, ProductRef> findRefs(Collection<Long> ids) {
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        return productRepository.findAllById(ids).stream().collect(Collectors.toMap(Product::getId, p -> {
+            boolean visible = p.getDeletedAt() == null && p.getStatus() != ProductStatus.HIDDEN;
+            return new ProductRef(p.getId(), p.getName(), visible ? p.getSlug() : null, p.thumbnailUrl());
+        }));
     }
 
     static ProductSummary toSummary(Product p) {

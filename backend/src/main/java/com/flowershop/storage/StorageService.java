@@ -11,6 +11,9 @@ public interface StorageService {
     /** Lưu ảnh (đã kiểm tra định dạng jpg/png/webp và dung lượng). */
     StoredFile storeImage(MultipartFile file, String folder);
 
+    /** Lưu video (đã kiểm tra định dạng mp4/mov/webm và dung lượng). */
+    StoredFile storeVideo(MultipartFile file, String folder);
+
     void delete(String key);
 
     record StoredFile(String key, String url) {
