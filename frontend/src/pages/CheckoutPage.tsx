@@ -20,6 +20,8 @@ interface CheckoutForm {
   receiverPhone: string;
   email: string;
   deliveryAddress: string;
+  /** Số nhà, ngõ/ngách, tòa nhà: vị trí GPS thường chỉ ra được đường, phường/xã */
+  addressDetail: string;
   deliveryZoneId: number | null;
   deliveryDate: string;
   deliverySlot: DeliverySlot | null;
@@ -37,7 +39,13 @@ const ERROR_KEYS: Partial<Record<keyof CheckoutForm, string>> = {
   email: 'sender.email',
   receiverName: 'receiver.name',
   receiverPhone: 'receiver.phone',
+  addressDetail: 'deliveryAddress',
 };
+
+/** Địa chỉ gửi lên đơn: "Số 12, ngõ 34, Phố Lê Thái Tổ, Phường Hoàn Kiếm, Hà Nội" */
+function fullAddress(form: CheckoutForm): string {
+  return [form.addressDetail.trim(), form.deliveryAddress.trim()].filter(Boolean).join(', ');
+}
 
 function withoutKeys(errors: Errors, keys: string[]): Errors {
   if (!keys.some((k) => k in errors)) return errors;
@@ -52,6 +60,7 @@ function validate(form: CheckoutForm): Errors {
   if (!isValidPhone(form.receiverPhone)) e['receiver.phone'] = PHONE_MESSAGE;
   if (form.email.trim() && !EMAIL_REGEX.test(form.email.trim())) e['sender.email'] = 'Email không hợp lệ';
   if (!form.deliveryAddress.trim()) e.deliveryAddress = 'Vui lòng nhập địa chỉ giao hàng';
+  else if (fullAddress(form).length > 500) e.deliveryAddress = 'Địa chỉ tối đa 500 ký tự';
   if (!form.deliveryZoneId) e.deliveryZoneId = 'Vui lòng chọn khu vực giao';
   if (!form.deliveryDate) e.deliveryDate = 'Vui lòng chọn ngày giao';
   if (!form.deliverySlot) e.deliverySlot = 'Vui lòng chọn khung giờ giao';
@@ -80,6 +89,7 @@ export function CheckoutPage() {
     receiverPhone: '',
     email: '',
     deliveryAddress: '',
+    addressDetail: '',
     deliveryZoneId: null,
     deliveryDate: today,
     deliverySlot: null,
@@ -147,11 +157,15 @@ export function CheckoutPage() {
       receiverName: a.receiverName,
       receiverPhone: a.receiverPhone,
       deliveryAddress: formatAddress(a),
+      // Địa chỉ trong sổ đã có số nhà
+      addressDetail: '',
     }));
     setErrors((e) => withoutKeys(e, ['receiver.name', 'receiver.phone', 'deliveryAddress']));
   };
 
-  // Nút "Vị trí hiện tại": GPS của trình duyệt -> backend đổi thành địa chỉ, khách sửa lại số nhà nếu cần
+  // Nút "Vị trí hiện tại": GPS của trình duyệt -> backend đổi thành địa chỉ.
+  // Bản đồ hiếm khi có số nhà (và GPS lệch vài chục mét) nên không đoán, chuyển sang ô số nhà cho khách tự nhập.
+  const detailInput = useRef<HTMLInputElement>(null);
   const fillCurrentLocation = async () => {
     setLocating(true);
     setLocateNote(null);
@@ -162,10 +176,10 @@ export function CheckoutPage() {
       setLocateNote({
         error: false,
         text:
-          accuracy > 100
-            ? `Vị trí có thể lệch khoảng ${Math.round(accuracy)}m, vui lòng kiểm tra lại địa chỉ.`
-            : 'Đã điền theo vị trí hiện tại, vui lòng bổ sung số nhà, ngõ/ngách nếu thiếu.',
+          'Đã điền theo vị trí hiện tại, vui lòng nhập số nhà, ngõ/ngách ở ô bên dưới.' +
+          (accuracy > 100 ? ` Vị trí có thể lệch khoảng ${Math.round(accuracy)}m, hãy kiểm tra lại.` : ''),
       });
+      detailInput.current?.focus();
     } catch (err) {
       setLocateNote({ error: true, text: errorMessage(err) });
     } finally {
@@ -257,7 +271,7 @@ export function CheckoutPage() {
             email: form.email.trim() || null,
           },
           receiver: { name: form.receiverName.trim(), phone: cleanPhone(form.receiverPhone) },
-          deliveryAddress: form.deliveryAddress.trim(),
+          deliveryAddress: fullAddress(form),
           deliveryZoneId: form.deliveryZoneId!,
           deliveryDate: form.deliveryDate,
           deliverySlot: form.deliverySlot!,
@@ -400,7 +414,7 @@ export function CheckoutPage() {
                     id="delivery-address"
                     value={form.deliveryAddress}
                     maxLength={500}
-                    placeholder="Số nhà, đường, phường/xã, tỉnh/thành"
+                    placeholder="Đường/phố, phường/xã, tỉnh/thành"
                     onChange={(e) => set('deliveryAddress', e.target.value)}
                   />
                   <button type="button" className="btn btn-outline" disabled={locating} onClick={fillCurrentLocation}>
@@ -412,6 +426,16 @@ export function CheckoutPage() {
                 )}
                 <FieldError message={errors.deliveryAddress} />
               </div>
+              <label className="field field-full">
+                <span className="field-label">Số nhà, ngõ/ngách, tòa nhà</span>
+                <input
+                  ref={detailInput}
+                  value={form.addressDetail}
+                  maxLength={100}
+                  placeholder="VD: Số 12, ngõ 34, tầng 3"
+                  onChange={(e) => set('addressDetail', e.target.value)}
+                />
+              </label>
             </div>
 
             <p className="field-label">
