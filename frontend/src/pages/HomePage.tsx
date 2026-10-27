@@ -1,9 +1,11 @@
+import { useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { catalogApi, type ProductQuery } from '../api/catalog';
 import type { Category } from '../api/types';
 import { BannerCarousel } from '../components/BannerCarousel';
 import { ErrorBox, Loading } from '../components/Feedback';
 import { HomeLeftSidebar, HomeRightSidebar } from '../components/HomeSidebars';
+import { ProductGrid, ProductRowList, ProductSkeletons, type ProductLayout } from '../components/ProductCard';
 import { ProductSlider } from '../components/ProductSlider';
 import { SHOP_NAME } from '../config';
 import { useAsync } from '../hooks/useAsync';
@@ -12,8 +14,11 @@ import { useReveal } from '../hooks/useReveal';
 import { categoryLook } from '../utils/categoryStyle';
 import { CATEGORY_TYPE_LABEL, CATEGORY_TYPES } from '../utils/format';
 
-/** Số sản phẩm mỗi dải trượt ở trang chủ */
-const SLIDER_SIZE = 12;
+/** Số sản phẩm tải lần đầu: dải trượt ngang, danh sách thẻ ngang, lưới dọc */
+const FIRST_SIZE: Record<ProductLayout, number> = { slider: 12, rows: 6, grid: 8 };
+/** Lưới dọc: mỗi lần bấm "Xem thêm" tải thêm bấy nhiêu, quá GRID_MAX thì chuyển sang trang danh sách */
+const GRID_STEP = 8;
+const GRID_MAX = 48;
 /** Màn hình đủ rộng thì thêm cột danh mục bên trái và cột ưu đãi bên phải (khớp CSS .home-layout.has-sides) */
 const SIDEBARS_QUERY = '(min-width: 1400px)';
 
@@ -21,6 +26,7 @@ function ProductSection({
   title,
   query,
   link,
+  layout = 'slider',
   centered = false,
   hideWhenEmpty = false,
   autoplay = false,
@@ -28,29 +34,58 @@ function ProductSection({
   title: string;
   query: ProductQuery;
   link: string;
+  layout?: ProductLayout;
   centered?: boolean;
   hideWhenEmpty?: boolean;
   autoplay?: boolean;
 }) {
+  const [size, setSize] = useState(FIRST_SIZE[layout]);
   const queryKey = JSON.stringify(query);
+  // "Xem thêm" tải lại từ đầu với size lớn hơn: thẻ cũ giữ nguyên trên màn hình, thẻ mới nối vào cuối
   const { data, error, loading, reload } = useAsync(
-    () => catalogApi.products({ ...query, size: SLIDER_SIZE }),
-    [queryKey],
+    () => catalogApi.products({ ...query, size }),
+    [queryKey, size],
   );
   const revealRef = useReveal<HTMLElement>();
   if (hideWhenEmpty && data && data.content.length === 0) return null;
+  const remaining = data ? data.totalElements - data.content.length : 0;
   return (
     <section className="section reveal" ref={revealRef}>
       <div className={`section-head ${centered ? 'section-head-center' : ''}`}>
         <h2>{title}</h2>
         <Link to={link} className="link-more">
-          Xem tất cả →
+          Xem tất cả{' '}
+          <span className="link-more-arrow" aria-hidden="true">
+            →
+          </span>
         </Link>
       </div>
-      {loading && !data && <Loading />}
+      {loading && !data && <ProductSkeletons layout={layout} />}
       {error && <ErrorBox message={error} onRetry={reload} />}
       {data && data.content.length === 0 && <p className="muted">Chưa có sản phẩm.</p>}
-      {data && data.content.length > 0 && <ProductSlider products={data.content} label={title} autoplay={autoplay} />}
+      {data && data.content.length > 0 && layout === 'slider' && (
+        <ProductSlider products={data.content} label={title} autoplay={autoplay} />
+      )}
+      {data && data.content.length > 0 && layout === 'rows' && <ProductRowList products={data.content} />}
+      {data && data.content.length > 0 && layout === 'grid' && <ProductGrid products={data.content} />}
+      {layout === 'grid' && remaining > 0 && (
+        <div className="load-more">
+          {size < GRID_MAX ? (
+            <button
+              type="button"
+              className="btn btn-outline btn-lg"
+              disabled={loading}
+              onClick={() => setSize((s) => s + GRID_STEP)}
+            >
+              {loading ? 'Đang tải...' : `Xem thêm ${Math.min(remaining, GRID_STEP)} sản phẩm`}
+            </button>
+          ) : (
+            <Link to={link} className="btn btn-outline btn-lg">
+              Xem tất cả sản phẩm
+            </Link>
+          )}
+        </div>
+      )}
     </section>
   );
 }
@@ -65,8 +100,13 @@ function CategoryChips({ categories }: { categories: Category[] }) {
         <div key={g.type} className="category-group">
           <h3 className="category-group-title">{CATEGORY_TYPE_LABEL[g.type]}</h3>
           <div className="chip-row">
-            {g.items.map((c) => (
-              <Link key={c.id} to={`/products?categorySlug=${c.slug}`} className="chip chip-lg">
+            {g.items.map((c, i) => (
+              <Link
+                key={c.id}
+                to={`/products?categorySlug=${c.slug}`}
+                className="chip chip-lg"
+                style={{ '--i': i } as CSSProperties}
+              >
                 <span aria-hidden="true">{categoryLook(c.slug).icon}</span>
                 {c.name}
               </Link>
@@ -120,7 +160,7 @@ function HomeBanner() {
     // Giữ chỗ đúng tỉ lệ banner để trang không bị giật khi ảnh tải xong
     return (
       <div className="container home-banner" aria-hidden="true">
-        <div className="banner-frame banner-skeleton" />
+        <div className="banner-frame skeleton" />
       </div>
     );
   }
@@ -130,7 +170,6 @@ function HomeBanner() {
 export function HomePage() {
   const categories = useAsync(() => catalogApi.categories(), []);
   const withSidebars = useMediaQuery(SIDEBARS_QUERY);
-  const uspRef = useReveal<HTMLElement>();
   const categoriesRef = useReveal<HTMLElement>();
 
   return (
@@ -150,29 +189,7 @@ export function HomePage() {
             autoplay
           />
 
-          <section className="usp-row reveal" ref={uspRef}>
-            <div className="usp">
-              <span aria-hidden="true">🚚</span>
-              <div>
-                <strong>Giao đúng khung giờ</strong>
-                <p className="muted small">Chọn khung 2 tiếng hoặc giao nhanh nội thành</p>
-              </div>
-            </div>
-            <div className="usp">
-              <span aria-hidden="true">📸</span>
-              <div>
-                <strong>Ảnh thực tế</strong>
-                <p className="muted small">Gửi ảnh trước khi giao</p>
-              </div>
-            </div>
-            <div className="usp">
-              <span aria-hidden="true">⚡</span>
-              <div>
-                <strong>Thanh toán QR tự động</strong>
-                <p className="muted small">Xác nhận ngay khi chuyển khoản</p>
-              </div>
-            </div>
-          </section>
+          <ProductSection title="Bán chạy nhất" query={{ sort: 'bestseller' }} link="/products?sort=bestseller" />
 
           <section className="section reveal" ref={categoriesRef}>
             <div className="section-head">
@@ -183,8 +200,14 @@ export function HomePage() {
             {categories.data && <CategoryChips categories={categories.data} />}
           </section>
 
-          <ProductSection title="Bán chạy nhất" query={{ sort: 'bestseller' }} link="/products?sort=bestseller" />
-          <ProductSection title="Mẫu mới" query={{ sort: 'newest' }} link="/products?sort=newest" />
+          <ProductSection
+            title="Giá tốt"
+            query={{ sort: 'price,asc' }}
+            link="/products?sort=price,asc"
+            layout="rows"
+            hideWhenEmpty
+          />
+          <ProductSection title="Mẫu mới" query={{ sort: 'newest' }} link="/products?sort=newest" layout="grid" />
         </div>
       </div>
 
