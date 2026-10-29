@@ -48,6 +48,16 @@ class SeoFlowTest {
                 .contains("<meta property=\"og:type\" content=\"product\">")
                 .contains("\"@type\":\"Product\"", "\"priceCurrency\":\"VND\"", "\"@type\":\"BreadcrumbList\"")
                 .doesNotContain("noindex");
+        // Đủ trường cho Merchant listing của Google: Offer (không phải AggregateOffer), phí giao, đổi trả, brand
+        assertThat(head)
+                .contains("\"brand\":{\"@type\":\"Brand\",\"name\":\"H2N Store\"}")
+                .contains("\"shippingRate\":{\"@type\":\"MonetaryAmount\",\"value\":30000,\"currency\":\"VND\"}")
+                .contains("\"shippingDestination\":{\"@type\":\"DefinedRegion\",\"addressCountry\":\"VN\"}")
+                .contains("\"handlingTime\":{\"@type\":\"QuantitativeValue\",\"minValue\":0,\"maxValue\":1,"
+                        + "\"unitCode\":\"DAY\"}")
+                .contains("\"returnPolicyCategory\":\"https://schema.org/MerchantReturnFiniteReturnWindow\"",
+                        "\"merchantReturnDays\":7", "\"returnFees\":\"https://schema.org/ReturnShippingFees\"")
+                .doesNotContain("AggregateOffer");
 
         String body = seo("body", PRODUCT);
         assertThat(body).contains("class=\"seo-fallback\"", "<h1>Bó hoa hồng đỏ Tình Nồng</h1>", "đ");
@@ -60,7 +70,8 @@ class SeoFlowTest {
                 .contains("<title>Hoa tươi – Trang 2 | H2N Store</title>")
                 .contains("<link rel=\"canonical\" href=\"" + base + "/products?categorySlug=hoa-tuoi&amp;page=1\">");
 
-        assertThat(seo("head", "/")).contains("\"@type\":\"OnlineStore\"", "\"@type\":\"WebSite\"");
+        assertThat(seo("head", "/")).contains("\"@type\":\"OnlineStore\"", "\"@type\":\"WebSite\"",
+                "\"@type\":\"MerchantReturnPolicy\"");
         assertThat(seo("body", "/")).contains("href=\"" + PRODUCT + "\"");
     }
 

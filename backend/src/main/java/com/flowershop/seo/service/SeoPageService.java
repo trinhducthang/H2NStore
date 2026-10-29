@@ -18,8 +18,12 @@ import com.flowershop.common.dto.PageResponse;
 import com.flowershop.common.exception.BusinessException;
 import com.flowershop.common.exception.ErrorCode;
 import com.flowershop.common.util.MoneyFormat;
+import com.flowershop.common.util.TimeUtils;
 import com.flowershop.config.AppProperties;
+import com.flowershop.delivery.dto.DeliveryDtos.ZoneResponse;
+import com.flowershop.delivery.service.DeliveryService;
 import com.flowershop.review.dto.ReviewDtos.RatingSummary;
+import com.flowershop.review.dto.ReviewDtos.ReviewResponse;
 import com.flowershop.review.service.ReviewService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,7 +36,6 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.LongSummaryStatistics;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
@@ -53,6 +56,8 @@ public class SeoPageService {
     private static final int LIST_PAGE_SIZE = 12;
     /** Khớp SLIDER_SIZE của HomePage */
     private static final int HOME_SECTION_SIZE = 12;
+    /** Số đánh giá mới nhất đưa vào JSON-LD sản phẩm */
+    private static final int REVIEW_LD_SIZE = 5;
     private static final int DESCRIPTION_MAX = 160;
     private static final int HOME_TITLE_MAX = 70;
     private static final Pattern PRODUCT_PATH = Pattern.compile("/products/([a-z0-9]+(?:-[a-z0-9]+)*)/?");
@@ -63,6 +68,7 @@ public class SeoPageService {
     private final CategoryService categoryService;
     private final ProductQueryService productQueryService;
     private final ReviewService reviewService;
+    private final DeliveryService deliveryService;
     private final BannerService bannerService;
     private final ObjectMapper objectMapper;
 
@@ -178,7 +184,8 @@ public class SeoPageService {
                 "image", image == null ? null : urls.absolute(image),
                 "telephone", phone,
                 "address", address == null ? null
-                        : obj("@type", "PostalAddress", "streetAddress", address, "addressCountry", "VN"));
+                        : obj("@type", "PostalAddress", "streetAddress", address, "addressCountry", "VN"),
+                "hasMerchantReturnPolicy", returnPolicy());
         return new Head(title.toString(), description, "/", "website", image, null, List.of(website, store));
     }
 
@@ -224,32 +231,101 @@ public class SeoPageService {
                 "description", StringUtils.hasText(p.description()) ? p.description().strip() : null,
                 "image", images.isEmpty() ? null : images,
                 "sku", variants.size() == 1 ? variants.getFirst().sku() : null,
+                // Chưa có ô thương hiệu riêng: hàng đứng tên shop (Google Merchant listing cần brand hoặc GTIN)
+                "brand", obj("@type", "Brand", "name", siteName()),
                 "category", p.categories().isEmpty() ? null : p.categories().getFirst().name(),
                 "url", urls.absolute(path),
                 "offers", offers(p, path),
                 "aggregateRating", rated ? obj("@type", "AggregateRating", "ratingValue", p.ratingAvg(),
-                        "reviewCount", p.ratingCount(), "bestRating", 5) : null);
+                        "reviewCount", p.ratingCount(), "bestRating", 5) : null,
+                "review", rated ? reviewsLd(p.id()) : null);
         return new Head(withSite(p.name()), description, path, "product", mainImage(p), price,
                 List.of(product, breadcrumbLd(productCrumbs(p))));
     }
 
-    private Map<String, Object> offers(ProductDetail p, String path) {
+    /** Mỗi biến thể một Offer: Merchant listing của Google không nhận AggregateOffer */
+    private List<Map<String, Object>> offers(ProductDetail p, String path) {
         List<VariantResponse> variants = p.variants();
         if (variants.isEmpty()) {
             return null;
         }
-        boolean inStock = p.status() == ProductStatus.ACTIVE && variants.stream().anyMatch(v -> v.stock() > 0);
-        String availability = SCHEMA + (inStock ? "/InStock" : "/OutOfStock");
-        if (variants.size() == 1) {
-            return obj("@type", "Offer", "price", variants.getFirst().effectivePrice(), "priceCurrency", "VND",
-                    "availability", availability, "itemCondition", SCHEMA + "/NewCondition",
-                    "url", urls.absolute(path));
+        String url = urls.absolute(path);
+        Map<String, Object> shipping = shippingDetails();
+        Map<String, Object> returns = returnPolicy();
+        return variants.stream()
+                .map(v -> obj("@type", "Offer",
+                        "name", variants.size() == 1 ? null : v.name(),
+                        "sku", v.sku(),
+                        "price", v.effectivePrice(),
+                        "priceCurrency", "VND",
+                        "availability", SCHEMA + (inStock(p, v) ? "/InStock" : "/OutOfStock"),
+                        "itemCondition", SCHEMA + "/NewCondition",
+                        "url", url,
+                        "shippingDetails", shipping,
+                        "hasMerchantReturnPolicy", returns))
+                .toList();
+    }
+
+    /**
+     * Phí giao thường của khu vực rẻ nhất. Đặt trước min-prepare-hours, giao trong thành phố nên nhận trong ngày
+     * hoặc hôm sau. null khi chưa mở khu vực giao nào.
+     */
+    private Map<String, Object> shippingDetails() {
+        Long fee = cheapestShippingFee();
+        if (fee == null) {
+            return null;
         }
-        LongSummaryStatistics prices = variants.stream().mapToLong(VariantResponse::effectivePrice)
-                .summaryStatistics();
-        return obj("@type", "AggregateOffer", "lowPrice", prices.getMin(), "highPrice", prices.getMax(),
-                "offerCount", variants.size(), "priceCurrency", "VND", "availability", availability,
-                "url", urls.absolute(path));
+        return obj("@type", "OfferShippingDetails",
+                "shippingRate", vndAmount(fee),
+                "shippingDestination", obj("@type", "DefinedRegion", "addressCountry", "VN"),
+                "deliveryTime", obj("@type", "ShippingDeliveryTime",
+                        "handlingTime", days(0, 1),
+                        "transitTime", days(0, 1)));
+    }
+
+    /** Theo app.seo.return-days (0 = không nhận trả): khách gửi trả qua shipper, tự chịu phí giao */
+    private Map<String, Object> returnPolicy() {
+        int days = props.seo().returnDays();
+        if (days <= 0) {
+            return obj("@type", "MerchantReturnPolicy", "applicableCountry", "VN",
+                    "returnPolicyCategory", SCHEMA + "/MerchantReturnNotPermitted");
+        }
+        Long fee = cheapestShippingFee();
+        return obj("@type", "MerchantReturnPolicy", "applicableCountry", "VN",
+                "returnPolicyCategory", SCHEMA + "/MerchantReturnFiniteReturnWindow",
+                "merchantReturnDays", days,
+                "returnMethod", SCHEMA + "/ReturnByMail",
+                "returnFees", SCHEMA + "/ReturnShippingFees",
+                "returnShippingFeesAmount", fee == null ? null : vndAmount(fee));
+    }
+
+    /** Đánh giá đã duyệt mới nhất, cũng hiện ở trang sản phẩm */
+    private List<Map<String, Object>> reviewsLd(Long productId) {
+        return reviewService.approvedForProduct(productId, null, false, 0, REVIEW_LD_SIZE).content().stream()
+                .map(this::reviewLd)
+                .toList();
+    }
+
+    private Map<String, Object> reviewLd(ReviewResponse r) {
+        return obj("@type", "Review",
+                "author", obj("@type", "Person", "name", r.authorName()),
+                "datePublished", r.createdAt().atZoneSameInstant(TimeUtils.ZONE).toLocalDate().toString(),
+                "reviewBody", StringUtils.hasText(r.content()) ? r.content().strip() : null,
+                "reviewRating", obj("@type", "Rating", "ratingValue", r.rating(), "bestRating", 5));
+    }
+
+    /** activeZones xếp theo phí tăng dần */
+    private Long cheapestShippingFee() {
+        List<ZoneResponse> zones = deliveryService.activeZones();
+        return zones.isEmpty() ? null : zones.getFirst().shippingFee();
+    }
+
+    private static Map<String, Object> vndAmount(long amount) {
+        return obj("@type", "MonetaryAmount", "value", amount, "currency", "VND");
+    }
+
+    private static Map<String, Object> days(int min, int max) {
+        return obj("@type", "QuantitativeValue", "minValue", min, "maxValue", max, "unitCode", "DAY");
     }
 
     private String render(Head h) {
@@ -391,8 +467,11 @@ public class SeoPageService {
         if (v.salePrice() != null && v.salePrice() < v.price()) {
             out.append(" (giá gốc ").append(vnd(v.price())).append(')');
         }
-        boolean inStock = p.status() == ProductStatus.ACTIVE && v.stock() > 0;
-        return out.append(inStock ? " – còn hàng" : " – tạm hết hàng").toString();
+        return out.append(inStock(p, v) ? " – còn hàng" : " – tạm hết hàng").toString();
+    }
+
+    private static boolean inStock(ProductDetail p, VariantResponse v) {
+        return p.status() == ProductStatus.ACTIVE && v.stock() > 0;
     }
 
     private void productSection(StringBuilder out, String title, List<ProductSummary> products) {

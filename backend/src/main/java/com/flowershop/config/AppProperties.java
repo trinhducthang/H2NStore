@@ -57,8 +57,11 @@ public record AppProperties(
     public record Geocoding(String baseUrl, String userAgent) {
     }
 
-    /** Thông tin shop cho thẻ meta, JSON-LD, llms.txt; phone/address trống thì bỏ qua */
-    public record Seo(String siteName, String phone, String address) {
+    /**
+     * Thông tin shop cho thẻ meta, JSON-LD, llms.txt; phone/address trống thì bỏ qua.
+     * returnDays: số ngày nhận trả hàng khai báo với Google, 0 = không nhận trả.
+     */
+    public record Seo(String siteName, String phone, String address, int returnDays) {
     }
 
     /** Đăng nhập bằng Google: OAuth Client ID loại Web application; trống = tắt */

@@ -2,6 +2,7 @@ package com.flowershop.review;
 
 import com.flowershop.TestcontainersConfig;
 import com.flowershop.common.util.TimeUtils;
+import com.flowershop.seo.controller.SeoController;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -103,6 +104,9 @@ class ReviewFlowTest {
         assertThat(publicReviewIds("")).doesNotContain(reviewId);
         approve(reviewId, admin);
         assertThat(publicReviewIds("")).contains(reviewId);
+        // JSON-LD trang sản phẩm (cho Google) có đánh giá đã duyệt
+        assertThat(seoHead()).contains("\"@type\":\"Review\"", "\"reviewBody\":\"Hoa tươi, giao đúng giờ\"",
+                "\"reviewRating\":{\"@type\":\"Rating\",\"ratingValue\":4,\"bestRating\":5}");
         assertThat(publicReviewIds("?withMedia=true&rating=4")).contains(reviewId);
         assertThat(publicReviewIds("?rating=5")).doesNotContain(reviewId);
         Map<String, Object> summary = rest.exchange("/api/public/products/" + SLUG + "/reviews/summary",
@@ -215,6 +219,13 @@ class ReviewFlowTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> content = (List<Map<String, Object>>) page.get("content");
         return content.stream().map(r -> ((Number) r.get("id")).longValue()).toList();
+    }
+
+    private String seoHead() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(SeoController.URI_HEADER, "/products/" + SLUG);
+        return rest.exchange("/api/public/seo/head", HttpMethod.GET, new HttpEntity<>(headers), String.class)
+                .getBody();
     }
 
     @SuppressWarnings("unchecked")

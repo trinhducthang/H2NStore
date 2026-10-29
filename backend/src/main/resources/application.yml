@@ -119,6 +119,9 @@ app:
     site-name: ${SHOP_NAME:H2N Store}
     phone: ${SHOP_HOTLINE:}
     address: ${SHOP_ADDRESS:}
+    # Chính sách đổi trả trong JSON-LD (Google hiện trên kết quả tìm kiếm): trả trong N ngày, khách chịu phí ship.
+    # 0 = không nhận trả. Nhớ khớp chữ "Đổi trả ... ngày" ở SERVICE_PERKS (frontend/src/config.ts).
+    return-days: 7
   google:
     # Đăng nhập bằng Google: Client ID (loại "Web application") tạo ở Google Cloud Console, xem README.
     # Để trống thì tắt, trang đăng nhập không hiện nút Google.
